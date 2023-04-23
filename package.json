@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "camera-controls": "^2.3.4",
+    "three": "^0.151.3"
+  },
+  "devDependencies": {
+    "vite": "^4.3.1"
+  }
+}

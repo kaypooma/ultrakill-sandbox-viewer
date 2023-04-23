@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>ultra kills you</title>
+
+        <style>
+            @font-face {
+                font-family: 'VCR OSD Mono';
+                src: url('fonts/VCROSDMono.woff2') format('woff2'),
+                    url('fonts/VCROSDMono.woff') format('woff');
+
+                font-weight: normal;
+                font-style: normal;
+                font-display: swap;
+            }
+
+            body {
+                margin: 0;
+                font-family: 'VCR OSD Mono', monospace;
+                font-size: 21px;
+                color: #ddd;
+
+                box-sizing: border-box;
+                user-select: none;
+            }
+
+            #file_input_container, #save_container {
+                /* width: 200px; */
+
+                position: absolute;
+                top: 5px;
+                left: 5px;
+
+                background: rgba(255, 255, 255, 0.25);
+
+                width: 260px;
+                height: 24px;
+
+                padding: 10px;
+                border: 1px outset #222;
+            }
+
+            #save_container {
+                width: fit-content;
+                height: fit-content;
+
+                left: auto;
+                top: auto;
+
+                bottom: 5px;
+                right: 5px;
+            }
+            #save_container button {
+                font-family: 'VCR OSD Mono', monospace;
+                font-size: 21px;
+                padding: 10px;
+                
+                width: 200px;
+
+                background: #222;
+                color: #ddd;
+            }
+
+            .object_data_container {
+                width: 350px;
+
+                position: absolute;
+                top: 5px;
+                right: 5px;
+                
+                background: rgba(255, 255, 255, 0.25);
+
+                padding: 10px;
+
+                border: 1px outset #222;
+
+                text-shadow: 0 2px 0 #000;
+            }
+
+            .object_data_container > p:first-child {
+                text-align: left;
+            }
+            .object_data_container p {
+                text-align: center;
+                margin: 0;
+            }
+
+            .three_split {
+                display: grid;
+                width: 100%;
+
+                grid-template-columns: 1fr 1fr 1fr;
+                grid-template-rows: 1fr 0.25fr;
+
+                gap: 5px;
+                justify-content: center;
+
+                margin-top: 5px;
+            }
+            .three_split input {
+                display: block;
+
+                padding: 3px;
+
+                min-width: 0;
+
+                background: #222;
+                color: #ddd;
+
+                font-family: 'VCR OSD Mono', monospace;
+                font-size: 0.8em;
+            }
+            .three_split span {
+                text-align: center;
+                font-size: 0.75em;
+            }
+
+            hr {
+                border: 2px inset #222;
+            }
+            hr.thin {
+                border: none;
+                height: 1px;
+                background: #222;
+            }
+
+            .hidden {
+                display: none;
+            }
+
+            #help {
+                font-family: 'VCR OSD Mono', monospace;
+
+                font-size: 21px;
+
+                background: rgba(255, 255, 255, 0.25);
+                color: #ddd;
+
+                position: absolute;
+
+                width: 45px;
+                height: 45px;
+
+                padding: 10px;
+
+                top: 5px;
+                left: 290px;
+            }
+
+            #help_dialog {
+                width: 450px;
+                height: fit-content;
+
+                position: absolute;
+                margin: auto;
+
+                top: 0;
+                bottom: 0;
+                left: 0;
+                right: 0;
+
+                background: #404040;
+                border: 1px outset #222;
+
+                padding: 20px;
+
+                text-shadow: 0 2px 0 #000;
+                
+                display: none;
+                flex-direction: column;
+            }
+            #help_dialog p {
+                margin: 5px;
+            }
+            /* #help_dialog p:first-child {
+                margin-top: 0;
+            }
+            #help_dialog p:last-child {
+                margin-bottom: 0;
+            } */
+
+            #help_dialog button {                
+                font-family: 'VCR OSD Mono', monospace;
+                font-size: 21px;
+                padding: 5px;
+                
+                width: 100px;
+
+                background: #222;
+                color: #ddd;
+            }
+
+            #help_dialog div {
+                display: flex;
+                justify-content: right;
+
+                margin-top: 20px;
+            }
+
+            .delete_selected_object {
+                width: 30px;
+                height: 30px;
+                position: absolute;
+
+                right: 10px;
+                top: 6px;     
+
+                font-family: 'VCR OSD Mono', monospace;
+                font-size: 21px;
+
+                background: red;
+                border: 2px outset red;
+                color: #ddd;
+            }
+            .delete_selected_object:active {
+                border: 2px inset red;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="file_input_container">
+            <input type="file" id="sandbox_file">
+        </div>
+        <div id="save_container">
+            <button id="save">save</button>
+        </div>
+
+        <button id="help">?</button>
+        <div id="help_dialog">
+            <p>wasd to move</p>
+            <p>q to descend, e to ascend</p>
+            <p>shift to increase movement speed</p>
+            <p>left click to rotate view</p>
+            <p>right click to select objects</p>
+
+            <div><button id="close_help_dialog">close</button></div>
+        </div>
+
+        <div class="object_data_container hidden" id="block_data">
+            <p id="block_type">object</p>
+            <button class="delete_selected_object"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Pro 6.4.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) Copyright 2023 Fonticons, Inc. --><path fill="currentColor" d="M135.2 17.7L128 32H32C14.3 32 0 46.3 0 64S14.3 96 32 96H416c17.7 0 32-14.3 32-32s-14.3-32-32-32H320l-7.2-14.3C307.4 6.8 296.3 0 284.2 0H163.8c-12.1 0-23.2 6.8-28.6 17.7zM416 128H32L53.2 467c1.6 25.3 22.6 45 47.9 45H346.9c25.3 0 46.3-19.7 47.9-45L416 128z"/></svg></button>
+            <hr>
+            <div class="control">
+                <p>position</p>
+                <div class="three_split" id="position">
+                    <input type="number" class="position_x" step="0.5" data-property="Position.x">
+                    <input type="number" class="position_y" step="0.5" data-property="Position.y">
+                    <input type="number" class="position_z" step="0.5" data-property="Position.z">
+
+                    <span>X</span>
+                    <span>Y</span>
+                    <span>Z</span>
+                </div>
+            </div>
+            <hr class="thin">
+            <div class="control">
+                <p>scale</p>
+                <div class="three_split" id="scale">
+                    <input type="number" class="scale_x" step="0.25" data-property="BlockSize.x">
+                    <input type="number" class="scale_y" step="0.25" data-property="BlockSize.y">
+                    <input type="number" class="scale_z" step="0.25" data-property="BlockSize.z">
+
+                    <span>X</span>
+                    <span>Y</span>
+                    <span>Z</span>
+                </div>
+            </div>
+            <hr class="thin">
+            <div class="control">
+                <div class="toggle">
+                    <label for="block_frozen">frozen</label>
+                    <input type="checkbox" id="block_frozen" data-property="Kinematic">
+                </div>
+            </div>
+            <hr class="thin">
+            <div class="control">
+                <div class="toggle">
+                    <label for="block_weak">weak</label>
+                    <input type="checkbox" id="block_weak" class="auto_exclude">
+                </div>
+                <div class="toggle">
+                    <label for="block_weak">unbreakable</label>
+                    <input type="checkbox" id="block_unbreakable" class="auto_exclude">
+                </div>
+            </div>
+        </div>
+        <div class="object_data_container hidden" id="prop_data">
+            <p id="prop_type">object</p>
+            <button class="delete_selected_object"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Pro 6.4.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) Copyright 2023 Fonticons, Inc. --><path fill="currentColor" d="M135.2 17.7L128 32H32C14.3 32 0 46.3 0 64S14.3 96 32 96H416c17.7 0 32-14.3 32-32s-14.3-32-32-32H320l-7.2-14.3C307.4 6.8 296.3 0 284.2 0H163.8c-12.1 0-23.2 6.8-28.6 17.7zM416 128H32L53.2 467c1.6 25.3 22.6 45 47.9 45H346.9c25.3 0 46.3-19.7 47.9-45L416 128z"/></svg></button>
+            <hr>
+            <div class="control">
+                <p>position</p>
+                <div class="three_split" id="position">
+                    <input type="number" class="position_x" step="0.5" data-property="Position.x">
+                    <input type="number" class="position_y" step="0.5" data-property="Position.y">
+                    <input type="number" class="position_z" step="0.5" data-property="Position.z">
+
+                    <span>X</span>
+                    <span>Y</span>
+                    <span>Z</span>
+                </div>
+            </div>
+            <hr class="thin">
+            <div class="control">
+                <p>scale</p>
+                <div class="three_split" id="scale">
+                    <input type="number" class="scale_x" step="0.25" data-property="Scale.x">
+                    <input type="number" class="scale_y" step="0.25" data-property="Scale.y">
+                    <input type="number" class="scale_z" step="0.25" data-property="Scale.z">
+
+                    <span>X</span>
+                    <span>Y</span>
+                    <span>Z</span>
+                </div>
+            </div>
+            <hr class="thin">
+            <div class="control">
+                <div class="toggle">
+                    <label for="prop_frozen">frozen</label>
+                    <input type="checkbox" class="frozen" id="prop_frozen" data-property="Kinematic">
+                </div>
+            </div>
+            <hr class="thin">
+            <div class="control">
+                <div class="toggle">
+                    <label for="prop_weak">weak</label>
+                    <input type="checkbox" id="prop_weak" class="auto_exclude">
+                </div>
+                <div class="toggle">
+                    <label for="prop_weak">unbreakable</label>
+                    <input type="checkbox" id="prop_unbreakable" class="auto_exclude">
+                </div>
+            </div>
+        </div>
+        <div class="object_data_container" id="disabled_data">
+            <p>no object selected</p>
+        </div>
+        
+        <script type="module" src="main.js"></script>
+    </body>
+</html>
