@@ -17,6 +17,7 @@ const EditingObject = {
     hovered: false,
     selected: false
 }
+const AxisDisplay = {}
 
 let sandboxFilename
 
@@ -78,6 +79,8 @@ const objectMaterials = {
     'ultrakill.barrier': { color: 0xC8C3AB },
     
     'ultrakill.tree': { color: 0x6A652B },
+
+    'ultrakill.melon': { color: 0x67A54C },
 }
 const PropGeneric = class PropGeneric {
     geometry
@@ -210,13 +213,22 @@ const addTree = ( scene, propData ) => {
         drawFunc: addTree
     })
 
-    for ( let mesh of [ tree.solidMesh, tree.frameMesh ] ) {
-        mesh.position.set(0, 0, 0)
-        mesh.rotation.set(0, 0, 0)
-    }
-
     scene.add( tree.positionGroup )
     return tree.solidMesh
+}
+const addMelon = ( scene, propData ) => {
+    let melon = new PropGeneric( propData, {
+        geometry: new THREE.IcosahedronGeometry( 1, 1 ),
+        drawFunc: addMelon
+    })
+
+    for ( let mesh of [ melon.solidMesh, melon.frameMesh ] ) {
+        mesh.position.set(0, 0, -1)
+        mesh.scale.set(1.5, 1, 1)
+    }
+
+    scene.add( melon.positionGroup )
+    return melon.solidMesh
 }
 
 const drawSandboxBlocks = ( scene, blocks ) => {
@@ -244,6 +256,10 @@ const drawSandboxProps = ( scene, props ) => {
 
         if ( propData.ObjectIdentifier === 'ultrakill.tree' ) {
             addTree( scene, propData )
+        }
+
+        if ( propData.ObjectIdentifier === 'ultrakill.melon' ) {
+            addMelon( scene, propData )
         }
     }
 }
@@ -362,7 +378,7 @@ const updateEditingObjectMaterial = (obj) => {
     let emissiveColor = 0x000000
     
     if ( obj.userData.hoverState ) emissiveColor = 0xdddddd
-    if ( obj.userData.selectedState ) emissiveColor = 0xffff00
+    if ( obj.userData.selectedState ) emissiveColor = 0xff00ff
 
     obj.material.emissive.set( emissiveColor )
 }
@@ -397,6 +413,8 @@ const updateSelectedObject = () => {
         updateSelectedState( EditingObject.selected, false )
         EditingObject.selected = false
     }
+
+    hideAxisDisplay()
 }
 
 const handleMouseMove = ( e ) => {
@@ -476,6 +494,7 @@ const redrawObject = ( obj, newData ) => {
     EditingObject.selected = redrawnObject
     updateSelectedState( EditingObject.selected, true )
 
+    AxisDisplay.redraw()
     Sandbox.updateObject( obj.userData.objectType, oldData, newData )
 }
 
@@ -485,11 +504,118 @@ const deleteObject = ( obj ) => {
     disposeGroup( obj.userData.parentGroup )
 }
 
+const axisColors = {
+    x: 0xff0000,
+    y: 0x00ff00,
+    z: 0x0000ff,
+}
+
+const hideAxisDisplay = () => {
+    if ( AxisDisplay.object ) {
+        // if ( AxisDisplay.object.material ) AxisDisplay.object.material.dispose()
+        // if ( AxisDisplay.object.geometry ) AxisDisplay.object.geometry.dispose()
+        disposeGroup( AxisDisplay.object )
+        scene.remove( AxisDisplay.object )
+    }    
+}
+
+const AxisDisplayObject = class AxisDisplayLine {
+    constructor(axis) {
+        let material = new THREE.LineBasicMaterial({ color: axisColors[axis] })
+
+        let axisLinePoints = [ new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0) ]
+
+        axisLinePoints[0][axis] = -999999
+        axisLinePoints[2][axis] = 999999
+
+        let axisLineGeometry = new THREE.BufferGeometry().setFromPoints( axisLinePoints )
+        let axisLine = new THREE.Line( axisLineGeometry, material )
+        
+        axisLine.renderOrder = 999
+        axisLine.material.depthTest = false
+
+        // this is probably not very good programming but i'll fix it later
+        let originXPoints = [ new THREE.Vector3(-2, 0, 0), new THREE.Vector3(0, 0, 0), new THREE.Vector3(2, 0, 0) ]
+        let originXGeometry = new THREE.BufferGeometry().setFromPoints( originXPoints )
+        let originXLine = new THREE.Line( originXGeometry, new THREE.LineBasicMaterial({ color: axisColors.x }) )
+
+        originXLine.renderOrder = 999
+        originXLine.material.depthTest = false
+
+        let originYPoints = [ new THREE.Vector3(0, -2, 0), new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 2, 0) ]
+        let originYGeometry = new THREE.BufferGeometry().setFromPoints( originYPoints )
+        let originYLine = new THREE.Line( originYGeometry, new THREE.LineBasicMaterial({ color: axisColors.y }) )
+
+        originYLine.renderOrder = 999
+        originYLine.material.depthTest = false
+
+        let originZPoints = [ new THREE.Vector3(0, 0, -2), new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 2) ]
+        let originZGeometry = new THREE.BufferGeometry().setFromPoints( originZPoints )
+        let originZLine = new THREE.Line( originZGeometry, new THREE.LineBasicMaterial({ color: axisColors.z }) )
+
+        originZLine.renderOrder = 999
+        originZLine.material.depthTest = false
+
+        let lineGroup = new THREE.Group()
+
+        lineGroup.add(axisLine)
+        lineGroup.add(originXLine)
+        lineGroup.add(originYLine)
+        lineGroup.add(originZLine)
+
+        this.object = lineGroup
+    }
+}
+
+const drawPositionalAxisDisplay = ( obj, axis ) => {
+    hideAxisDisplay()
+
+    let axisObject = new AxisDisplayObject(axis)
+
+    AxisDisplay.object = axisObject.object
+    AxisDisplay.redraw = () => drawPositionalAxisDisplay( EditingObject.selected, axis )
+
+    let position = new THREE.Vector3().copy( obj.userData.parentGroup.position )
+
+    AxisDisplay.object.position.copy( position )
+
+    scene.add( AxisDisplay.object )
+}
+const drawScalingAxisDisplay = ( obj, axis ) => {
+    hideAxisDisplay()
+
+    let axisObject = new AxisDisplayObject(axis)
+
+    AxisDisplay.object = axisObject.object
+    AxisDisplay.redraw = () => drawScalingAxisDisplay( EditingObject.selected, axis )
+
+    let position = new THREE.Vector3().copy( obj.userData.parentGroup.position )
+
+    AxisDisplay.object.position.copy( position )
+    AxisDisplay.object.rotation.copy( obj.userData.parentGroup.rotation )
+
+    scene.add( AxisDisplay.object )
+}
+
 // gooey
 const handleNumberInput = (input) => {
     input.addEventListener('input', e => {
         if (EditingObject.selected) updateObjectProperty( EditingObject.selected, input.dataset.property, parseFloat(input.value) )
     })    
+
+    if ( input.dataset.property.indexOf('Position') !== -1 ) {
+        input.addEventListener('focus', e => {
+            drawPositionalAxisDisplay( EditingObject.selected, input.dataset.property.split('.')[1] )
+        })
+    }
+    if ( input.dataset.property.indexOf('Scale') !== -1 || input.dataset.property.indexOf('BlockSize') !== -1 ) {
+        input.addEventListener('focus', e => {
+            drawScalingAxisDisplay( EditingObject.selected, input.dataset.property.split('.')[1] )
+        })
+    }
+    input.addEventListener('blur', e => {
+        hideAxisDisplay()
+    })
 }
 const handleToggleInput = (input) => {
     input.addEventListener('input', e => {
@@ -693,8 +819,9 @@ document.getElementById('help').addEventListener('click', () => {
 
 // render stuff
 const setupDefaultScene = ( controls ) => {
-    controls.forward( -320, false )
-    controls.truck( -65, false )
+    controls.forward( -420, false ) // haa ha
+    controls.truck( -60, false )
+    controls.rotate( Math.PI - Math.PI/9, 0, false )
 
     Sandbox.loadMap( JSON.parse(defaultSceneData) )
     reloadScene( scene )
