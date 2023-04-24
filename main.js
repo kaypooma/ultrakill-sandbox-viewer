@@ -1,5 +1,8 @@
 import * as THREE from 'three';
+import { OBJLoader } from 'three/addons/loaders/OBJLoader.js'
+
 import CameraControls from 'camera-controls';
+
 import { SandboxManager } from './sandman';
 import { defaultSceneData } from './defaultscene';
 
@@ -68,7 +71,57 @@ const objectMaterials = {
 
     'ultrakill.ramp': { color: 0x877057 },
     'ultrakill.ramp-stone': { color: 0x838179 },
+
+    'ultrakill.barrel': { color: 0x995D36 },
+    'ultrakill.explosive-barrel': { color: 0xFF2126 },
+
+    'ultrakill.barrier': { color: 0xC8C3AB },
+    
+    'ultrakill.tree': { color: 0x6A652B },
 }
+const PropGeneric = class PropGeneric {
+    geometry
+
+    solidMaterial
+    frameMaterial
+
+    solidMesh
+    frameMesh
+
+    scaleGroup = new THREE.Group()
+    positionGroup = new THREE.Group()
+
+    constructor( propData, options ) {
+        this.geometry = options.geometry
+        
+        // material setup
+        this.solidMaterial = new THREE.MeshLambertMaterial( objectMaterials[ propData.ObjectIdentifier ] ) || new THREE.MeshLambertMaterial({ color: 0xff00ff })
+        this.frameMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, wireframe: true, transparent: true, opacity: 0.4 })
+
+        // mesh setup
+        this.solidMesh = new THREE.Mesh( this.geometry, this.solidMaterial )
+        this.frameMesh = new THREE.Mesh( this.geometry, this.frameMaterial )
+
+        // scale group
+        this.scaleGroup.add( this.solidMesh )
+        this.scaleGroup.add( this.frameMesh )
+
+        this.scaleGroup.scale.set( propData.Scale.x, propData.Scale.y, propData.Scale.z )
+
+        // position/rotation group
+        this.positionGroup.add( this.scaleGroup )
+        
+        this.positionGroup.position.set( -propData.Position.x, propData.Position.y, propData.Position.z )
+        this.positionGroup.rotation.copy( convertFromUnityQuaternion( propData.Rotation.x, propData.Rotation.y, propData.Rotation.z, propData.Rotation.w ) )
+
+        // userdata setup
+        this.solidMesh.userData.objectData = propData
+        this.solidMesh.userData.objectType = 'prop'
+        this.solidMesh.userData.parentGroup = this.positionGroup
+        this.solidMesh.userData.drawFunc = options.drawFunc
+    }
+}
+
 const addBlock = ( scene, blockData ) => {
     let geometry = new THREE.BoxGeometry( blockData.BlockSize.x, blockData.BlockSize.y, blockData.BlockSize.z )
 
@@ -101,6 +154,7 @@ const addBlock = ( scene, blockData ) => {
 
     return blockSolid
 }
+
 const addRamp = ( scene, propData ) => {
     let shape = new THREE.Shape()
 
@@ -109,42 +163,60 @@ const addRamp = ( scene, propData ) => {
     shape.lineTo( 0,  4 )
     shape.lineTo( 0,  0 )
 
-    let geometry = new THREE.ExtrudeGeometry( shape, { depth: 4, bevelEnabled: false } )
+    let ramp = new PropGeneric( propData, {
+        geometry: new THREE.ExtrudeGeometry( shape, { depth: 4, bevelEnabled: false } ),
+        drawFunc: addRamp
+    })
 
-    let solid = new THREE.MeshLambertMaterial( objectMaterials[ propData.ObjectIdentifier ] )
-    let frame = new THREE.MeshBasicMaterial({ color: 0x000000, wireframe: true, transparent: true, opacity: 0.4 })
-
-    let rampSolid = new THREE.Mesh( geometry, solid )
-    let rampFrame = new THREE.Mesh( geometry, frame )
-
-    rampSolid.userData.objectData = propData
-    rampSolid.userData.objectType = 'prop'
-
-    for ( let ramp of [ rampSolid, rampFrame ] ) {
-        ramp.position.set(2, -2, 0)
-        ramp.rotation.set(-Math.PI/2, -Math.PI/2, 0)
+    for ( let mesh of [ ramp.solidMesh, ramp.frameMesh ] ) {
+        mesh.position.set(2, -2, 0)
+        mesh.rotation.set(-Math.PI/2, -Math.PI/2, 0)
     }
 
-    let rampScaleGroup = new THREE.Group()
-    rampScaleGroup.add( rampSolid )
-    rampScaleGroup.add( rampFrame )
+    scene.add( ramp.positionGroup )
+    return ramp.solidMesh
+}
+const addBarrel = ( scene, propData ) => {
+    let barrel = new PropGeneric( propData, {
+        geometry: new THREE.CylinderGeometry( 1, 1, 3, 8 ),
+        drawFunc: addBarrel
+    })
 
-    rampScaleGroup.scale.set( propData.Scale.x, propData.Scale.y, propData.Scale.z )
+    for ( let mesh of [ barrel.solidMesh, barrel.frameMesh ] ) {
+        mesh.position.set(0, 0, -1.5)
+        mesh.rotation.set(-Math.PI/2, -Math.PI/2, 0)
+    }
 
-    let rampGroup = new THREE.Group()
-    rampGroup.add( rampScaleGroup )
+    scene.add( barrel.positionGroup )
+    return barrel.solidMesh
+}
+const addBarrier = ( scene, propData ) => {
+    let barrier = new PropGeneric( propData, {
+        geometry: objectGeometry['ultrakill.barrier'],
+        drawFunc: addBarrier
+    })
 
-    let euler = convertFromUnityQuaternion( propData.Rotation.x, propData.Rotation.y, propData.Rotation.z, propData.Rotation.w )
+    for ( let mesh of [ barrier.solidMesh, barrier.frameMesh ] ) {
+        mesh.position.set(0, 0, 0)
+        mesh.rotation.set(-Math.PI/2, 0, 0)
+    }
 
-    rampGroup.position.set( -propData.Position.x, propData.Position.y, propData.Position.z )
-    rampGroup.rotation.copy( euler )
+    scene.add( barrier.positionGroup )
+    return barrier.solidMesh
+}
+const addTree = ( scene, propData ) => {
+    let tree = new PropGeneric( propData, {
+        geometry: objectGeometry['ultrakill.tree'],
+        drawFunc: addTree
+    })
 
-    rampSolid.userData.parentGroup = rampGroup
-    rampSolid.userData.drawFunc = addRamp
+    for ( let mesh of [ tree.solidMesh, tree.frameMesh ] ) {
+        mesh.position.set(0, 0, 0)
+        mesh.rotation.set(0, 0, 0)
+    }
 
-    scene.add( rampGroup )
-
-    return rampSolid
+    scene.add( tree.positionGroup )
+    return tree.solidMesh
 }
 
 const drawSandboxBlocks = ( scene, blocks ) => {
@@ -160,6 +232,18 @@ const drawSandboxProps = ( scene, props ) => {
 
         if ( propData.ObjectIdentifier.indexOf('ultrakill.ramp') !== -1 ) {
             addRamp( scene, propData )
+        }
+
+        if ( propData.ObjectIdentifier.indexOf('barrel') !== -1 ) {
+            addBarrel( scene, propData )
+        }
+
+        if ( propData.ObjectIdentifier === 'ultrakill.barrier' ) {
+            addBarrier( scene, propData )
+        }
+
+        if ( propData.ObjectIdentifier === 'ultrakill.tree' ) {
+            addTree( scene, propData )
         }
     }
 }
@@ -253,6 +337,8 @@ const getIntersectingObject = ( scene ) => {
     let intersects = Mouse.raycaster.intersectObjects( scene.children )
     let mesh
 
+    // console.log(intersects)
+
     if ( intersects.length >= 2 ) {
         for ( let i=0; i<2; i++ ) {
             if ( intersects[i].object.userData.objectData ) mesh = intersects[i]
@@ -335,7 +421,7 @@ const handleMouseDown = ( e ) => {
 }
 
 document.addEventListener('mousemove', e => {
-    if ( document.elementFromPoint( e.clientX, e.clientY ).tagName !== 'CANVAS' ) {
+    if ( document.elementFromPoint( e.clientX, e.clientY ) && document.elementFromPoint( e.clientX, e.clientY ).tagName !== 'CANVAS' ) {
         if ( EditingObject.hovered ) {
             updateHoverState( EditingObject.hovered, false )
             EditingObject.hovered = false    
@@ -408,7 +494,6 @@ const handleNumberInput = (input) => {
 const handleToggleInput = (input) => {
     input.addEventListener('input', e => {
         if (EditingObject.selected) updateObjectProperty( EditingObject.selected, input.dataset.property, input.checked )
-        // console.log('a')
     })
 }
 
@@ -622,11 +707,131 @@ const resize = () => {
     renderer.setSize( window.innerWidth, window.innerHeight )
 }
 
+// https://github.com/Fyrestar/THREE.InfiniteGridHelper
+class InfiniteGridHelper extends THREE.Mesh {
+
+    constructor ( size1, size2, color, distance, axes = 'xzy' ) {
+
+
+        color = color || new THREE.Color( 'white' );
+        size1 = size1 || 10;
+        size2 = size2 || 100;
+
+        distance = distance || 8000;
+
+
+
+        const planeAxes = axes.substr( 0, 2 );
+
+        const geometry = new THREE.PlaneGeometry( 2, 2, 1, 1 );
+
+        const material = new THREE.ShaderMaterial( {
+
+            side: THREE.DoubleSide,
+
+            uniforms: {
+                uSize1: {
+                    value: size1
+                },
+                uSize2: {
+                    value: size2
+                },
+                uColor: {
+                    value: color
+                },
+                uDistance: {
+                    value: distance
+                }
+            },
+            transparent: true,
+            vertexShader: `
+       
+       varying vec3 worldPosition;
+       
+       uniform float uDistance;
+       
+       void main() {
+       
+            vec3 pos = position.${axes} * uDistance;
+            pos.${planeAxes} += cameraPosition.${planeAxes};
+            
+            worldPosition = pos;
+            
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+       
+       }
+       `,
+
+
+            fragmentShader: `
+       
+       varying vec3 worldPosition;
+       
+       uniform float uSize1;
+       uniform float uSize2;
+       uniform vec3 uColor;
+       uniform float uDistance;
+        
+        
+        
+        float getGrid(float size) {
+        
+            vec2 r = worldPosition.${planeAxes} / size;
+            
+            
+            vec2 grid = abs(fract(r - 0.5) - 0.5) / fwidth(r);
+            float line = min(grid.x, grid.y);
+            
+        
+            return 1.0 - min(line, 1.0);
+        }
+        
+       void main() {
+       
+            
+              float d = 1.0 - min(distance(cameraPosition.${planeAxes}, worldPosition.${planeAxes}) / uDistance, 1.0);
+            
+              float g1 = getGrid(uSize1);
+              float g2 = getGrid(uSize2);
+              
+              
+              gl_FragColor = vec4(uColor.rgb, mix(g2, g1, g1) * pow(d, 3.0));
+              gl_FragColor.a = mix(0.5 * gl_FragColor.a, gl_FragColor.a, g2);
+            
+              if ( gl_FragColor.a <= 0.0 ) discard;
+            
+       
+       }
+       
+       `,
+
+            extensions: {
+                derivatives: true
+            }
+
+        } );
+
+        super( geometry, material );
+
+        this.frustumCulled = false;
+
+    }
+
+}
+
 const init = () => {
     scene = new THREE.Scene()
     camera = new THREE.PerspectiveCamera( 75, window.innerWidth/window.innerHeight, 0.1, 1000 )
 
     addLights( scene )
+
+    let infiniteGrid = new InfiniteGridHelper(4, 100)
+
+    infiniteGrid.material.uniforms.uDistance.value = 500
+    infiniteGrid.material.uniforms.uColor.value.set( new THREE.Color(0xAAAAAA) )
+    infiniteGrid.position.y = -10.5
+
+    scene.add( infiniteGrid )
 
     camera.position.z = -5
 
@@ -644,9 +849,10 @@ const init = () => {
     renderer.domElement.addEventListener('mousedown', handleMouseDown, false)
     
     window.addEventListener( 'resize', resize )
+
+    update()
 }
 const update = () => {
-    // controls.update()
     let delta = clock.getDelta()
 
     // keyboard camera movement
@@ -664,5 +870,29 @@ const update = () => {
     requestAnimationFrame( update )
 }
 
-init()
-update()
+// load in prop models and stuff
+const manager = new THREE.LoadingManager()
+const loader = new OBJLoader( manager )
+
+const modelsToLoad = [
+    'models/barrier.obj',
+    'models/tree.obj'
+]
+const objectGeometry = {}
+
+const loadAsyncWithModelName = ( url ) => {
+    return new Promise( resolve => {
+        loader.load( url, obj => {
+            let name = url.split('/')[1].split('.')[0]
+            resolve( {model: obj, name: name} )
+        })
+    })
+}
+
+Promise.all( modelsToLoad.map( x => loadAsyncWithModelName(x) ) ).then( models => {
+    for ( let model of models ) {
+        objectGeometry[ `ultrakill.${model.name}` ] = model.model.children[0].geometry
+    }
+    
+    init()
+})
