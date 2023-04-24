@@ -1002,15 +1002,15 @@ const manager = new THREE.LoadingManager()
 const loader = new OBJLoader( manager )
 
 const modelsToLoad = [
-    'models/barrier.obj',
-    'models/tree.obj'
+    'assets/models/barrier.obj',
+    'assets/models/tree.obj'
 ]
 const objectGeometry = {}
 
 const loadAsyncWithModelName = ( url ) => {
     return new Promise( resolve => {
         loader.load( url, obj => {
-            let name = url.split('/')[1].split('.')[0]
+            let name = url.split('/')[2].split('.')[0]
             resolve( {model: obj, name: name} )
         })
     })
