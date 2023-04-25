@@ -48,8 +48,14 @@ let controls
 
 const clock = new THREE.Clock()
 
+// unity quaternion ->       x, y, z,  w
+// to threejs quaternion -> -x, y, z, -w
+// to euler
+// 
+
 const convertFromUnityQuaternion = ( x, y, z, w ) => {
     let quaternion = new THREE.Quaternion( -x, y, z, -w )
+
     let v = new THREE.Euler()
 
     v.setFromQuaternion( quaternion )
@@ -57,6 +63,19 @@ const convertFromUnityQuaternion = ( x, y, z, w ) => {
     v.z *= -1
 
     return v
+}
+const convertToUnityQuaternion = ( x, y, z ) => {
+    let euler = new THREE.Euler( x, y, z )
+
+    euler.y -= Math.PI
+    euler.z *= -1
+
+    let quaternion = new THREE.Quaternion().setFromEuler( euler )
+
+    quaternion.x *= -1
+    quaternion.w *= -1
+
+    return quaternion
 }
 
 const objectMaterials = {
@@ -82,6 +101,40 @@ const objectMaterials = {
 
     'ultrakill.melon': { color: 0x67A54C },
 }
+
+const addBlock = ( scene, blockData ) => {
+    let geometry = new THREE.BoxGeometry( blockData.BlockSize.x, blockData.BlockSize.y, blockData.BlockSize.z )
+
+    let solid = new THREE.MeshLambertMaterial( objectMaterials[ blockData.ObjectIdentifier ] )
+    let frame = new THREE.MeshBasicMaterial({ color: 0x000000, wireframe: true, transparent: true, opacity: 0.4 })
+
+    let blockSolid = new THREE.Mesh( geometry, solid )
+    let blockFrame = new THREE.Mesh( geometry, frame )
+
+    blockSolid.userData.objectData = blockData
+    blockSolid.userData.objectType = 'block'
+    
+    for ( let cube of [ blockSolid, blockFrame ] ) {
+        cube.position.set( blockData.BlockSize.x/2, blockData.BlockSize.y/2, -blockData.BlockSize.z/2 )
+    }
+
+    let blockGroup = new THREE.Group()
+    blockGroup.add( blockSolid )
+    blockGroup.add( blockFrame )
+
+    let euler = convertFromUnityQuaternion( blockData.Rotation.x, blockData.Rotation.y, blockData.Rotation.z, blockData.Rotation.w )
+    
+    blockGroup.position.set( -blockData.Position.x, blockData.Position.y, blockData.Position.z )
+    blockGroup.rotation.copy( euler )
+
+    blockSolid.userData.parentGroup = blockGroup
+    blockSolid.userData.drawFunc = addBlock
+
+    scene.add( blockGroup )
+
+    return blockSolid
+}
+
 const PropGeneric = class PropGeneric {
     geometry
 
@@ -123,39 +176,6 @@ const PropGeneric = class PropGeneric {
         this.solidMesh.userData.parentGroup = this.positionGroup
         this.solidMesh.userData.drawFunc = options.drawFunc
     }
-}
-
-const addBlock = ( scene, blockData ) => {
-    let geometry = new THREE.BoxGeometry( blockData.BlockSize.x, blockData.BlockSize.y, blockData.BlockSize.z )
-
-    let solid = new THREE.MeshLambertMaterial( objectMaterials[ blockData.ObjectIdentifier ] )
-    let frame = new THREE.MeshBasicMaterial({ color: 0x000000, wireframe: true, transparent: true, opacity: 0.4 })
-
-    let blockSolid = new THREE.Mesh( geometry, solid )
-    let blockFrame = new THREE.Mesh( geometry, frame )
-
-    blockSolid.userData.objectData = blockData
-    blockSolid.userData.objectType = 'block'
-    
-    for ( let cube of [ blockSolid, blockFrame ] ) {
-        cube.position.set( blockData.BlockSize.x/2, blockData.BlockSize.y/2, -blockData.BlockSize.z/2 )
-    }
-
-    let blockGroup = new THREE.Group()
-    blockGroup.add( blockSolid )
-    blockGroup.add( blockFrame )
-
-    let euler = convertFromUnityQuaternion( blockData.Rotation.x, blockData.Rotation.y, blockData.Rotation.z, blockData.Rotation.w )
-    
-    blockGroup.position.set( -blockData.Position.x, blockData.Position.y, blockData.Position.z )
-    blockGroup.rotation.copy( euler )
-
-    blockSolid.userData.parentGroup = blockGroup
-    blockSolid.userData.drawFunc = addBlock
-
-    scene.add( blockGroup )
-
-    return blockSolid
 }
 
 const addRamp = ( scene, propData ) => {
@@ -484,6 +504,30 @@ const updateObjectUnbreakable = ( obj, value ) => {
 
     redrawObject( obj, data )
 }
+const updateObjectScale = ( obj, axis, value ) => {
+    if ( !obj ) return
+
+    let data = getObjectData( obj )
+    let property = obj.userData.objectType === 'block' ? 'BlockSize' : 'Scale'
+    
+    data[property][axis] = value
+
+    redrawObject( obj, data )
+}
+const updateObjectRotation = ( obj, rotation ) => {
+    if ( !obj ) return
+
+    let data = getObjectData( obj )
+    let unityQuaternion = convertToUnityQuaternion( rotation.x, rotation.y, rotation.z )
+
+    data.Rotation.x = unityQuaternion.x
+    data.Rotation.y = unityQuaternion.y
+    data.Rotation.z = unityQuaternion.z
+    data.Rotation.w = unityQuaternion.w
+
+    redrawObject( obj, data )
+    // console.log( obj.userData.objectData.Rotation, unityQuaternion )
+}
 
 const redrawObject = ( obj, newData ) => {
     let oldData = obj.userData.objectData
@@ -494,7 +538,7 @@ const redrawObject = ( obj, newData ) => {
     EditingObject.selected = redrawnObject
     updateSelectedState( EditingObject.selected, true )
 
-    AxisDisplay.redraw()
+    if (AxisDisplay.object) AxisDisplay.redraw()
     Sandbox.updateObject( obj.userData.objectType, oldData, newData )
 }
 
@@ -516,23 +560,30 @@ const hideAxisDisplay = () => {
         // if ( AxisDisplay.object.geometry ) AxisDisplay.object.geometry.dispose()
         disposeGroup( AxisDisplay.object )
         scene.remove( AxisDisplay.object )
+
+        AxisDisplay.object = false
     }    
 }
 
-const AxisDisplayObject = class AxisDisplayLine {
+const AxisDisplayObject = class AxisDisplayObject {
     constructor(axis) {
-        let material = new THREE.LineBasicMaterial({ color: axisColors[axis] })
-
         let axisLinePoints = [ new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0) ]
 
         axisLinePoints[0][axis] = -999999
         axisLinePoints[2][axis] = 999999
 
         let axisLineGeometry = new THREE.BufferGeometry().setFromPoints( axisLinePoints )
-        let axisLine = new THREE.Line( axisLineGeometry, material )
+
+        let axisLine = new THREE.Line( axisLineGeometry, new THREE.LineBasicMaterial({ color: axisColors[axis] }) )
         
-        axisLine.renderOrder = 999
-        axisLine.material.depthTest = false
+        // axisLine.renderOrder = 999
+        // axisLine.material.depthTest = false
+
+        let axisDotted = new THREE.Line( axisLineGeometry, new THREE.LineDashedMaterial({ color: axisColors[axis], dashSize: 0.5, gapSize: 0.5, scale: 1 }) )
+        axisDotted.computeLineDistances()
+        
+        axisDotted.renderOrder = 999
+        axisDotted.material.depthTest = false
 
         // this is probably not very good programming but i'll fix it later
         let originXPoints = [ new THREE.Vector3(-2, 0, 0), new THREE.Vector3(0, 0, 0), new THREE.Vector3(2, 0, 0) ]
@@ -559,9 +610,58 @@ const AxisDisplayObject = class AxisDisplayLine {
         let lineGroup = new THREE.Group()
 
         lineGroup.add(axisLine)
-        lineGroup.add(originXLine)
-        lineGroup.add(originYLine)
-        lineGroup.add(originZLine)
+        lineGroup.add(axisDotted)
+
+        axis === 'x' || lineGroup.add(originXLine)
+        axis === 'y' || lineGroup.add(originYLine)
+        axis === 'z' || lineGroup.add(originZLine)
+
+        this.object = lineGroup
+    }
+}
+const RotationalAxisDisplayObject = class RotationalAxisDisplayObject {
+    constructor(axis) {
+        // this is probably not very good programming but i'll fix it later
+        let rotationLine = {}
+
+        for ( let currentAxis of ['x', 'y', 'z'] ) {
+            let plane = ['x', 'y', 'z']
+            plane.splice( plane.indexOf(currentAxis), 1 )
+
+            let points = []          
+            let mult = currentAxis === axis ? 3 : 2  
+            for (let i=0; i<17; i++) {
+                let point = new THREE.Vector3(0, 0, 0)
+
+                point[ plane[0] ] = Math.cos( Math.PI*2 / 16 * i ) * mult
+                point[ plane[1] ] = Math.sin( Math.PI*2 / 16 * i ) * mult
+
+                points.push( point )
+            }
+
+            let geometry = new THREE.BufferGeometry().setFromPoints( points )
+            rotationLine[currentAxis] = new THREE.Line( geometry, new THREE.LineBasicMaterial({ color: axisColors[currentAxis], depthTest: false }) )
+
+            rotationLine[currentAxis].renderOrder = 999
+        }
+
+        let yGroup = new THREE.Group()
+
+        yGroup.add( rotationLine.y )
+        yGroup.add( rotationLine.z )
+
+        let xGroup = new THREE.Group()
+
+        xGroup.add( rotationLine.x )
+        xGroup.add( yGroup )
+
+        let lineGroup = new THREE.Group()
+
+        lineGroup.add(xGroup)
+
+        this.xContainer = xGroup
+        this.yContainer = yGroup
+        this.zContainer = rotationLine.z
 
         this.object = lineGroup
     }
@@ -596,6 +696,28 @@ const drawScalingAxisDisplay = ( obj, axis ) => {
 
     scene.add( AxisDisplay.object )
 }
+const drawRotationalAxisDisplay = ( obj, axis ) => {
+    hideAxisDisplay()
+
+    let axisObject = new RotationalAxisDisplayObject(axis)
+
+    axisObject.xContainer.rotation.copy( new THREE.Euler( obj.userData.parentGroup.rotation.x, 0, 0 ) )
+    axisObject.yContainer.rotation.copy( new THREE.Euler( 0, obj.userData.parentGroup.rotation.y, 0 ) )
+    axisObject.zContainer.rotation.copy( new THREE.Euler( 0, 0, obj.userData.parentGroup.rotation.z ) )
+
+    AxisDisplay.object = axisObject.object
+    AxisDisplay.redraw = () => drawRotationalAxisDisplay( EditingObject.selected, axis )
+
+    let position = new THREE.Vector3().copy( obj.userData.parentGroup.position )
+
+    AxisDisplay.object.position.copy( position )
+    // AxisDisplay.object.rotation.copy( obj.userData.parentGroup.rotation )
+
+    // AxisDisplay.
+    // console.log( obj.userData.parentGroup.rotation )
+
+    scene.add( AxisDisplay.object )
+}
 
 // gooey
 const handleNumberInput = (input) => {
@@ -613,7 +735,15 @@ const handleNumberInput = (input) => {
             drawScalingAxisDisplay( EditingObject.selected, input.dataset.property.split('.')[1] )
         })
     }
+    
     input.addEventListener('blur', e => {
+        if ( input.dataset.property.indexOf('Scale') !== -1 || input.dataset.property.indexOf('BlockSize') !== -1 ) {
+            if ( parseFloat(input.value) === 0 || parseFloat(input.value) === -0 ) { // negative zero yeah
+                input.value = 0.001
+                if (EditingObject.selected) updateObjectProperty( EditingObject.selected, input.dataset.property, parseFloat(input.value) )
+            }
+        }
+        
         hideAxisDisplay()
     })
 }
@@ -633,10 +763,10 @@ const updateGUI = ( obj ) => {
 
     switch (obj.userData.objectType) {
         case 'block':
-            updateBlockGUI( getObjectData(obj) )
+            updateObjectGUI( obj )
             break
         case 'prop':
-            updatePropGUI( getObjectData(obj) )
+            updateObjectGUI( obj )
             break
         default:
             return 'unknown object type'
@@ -657,31 +787,50 @@ const disableGUI = () => {
 }
 
 // block
-GUI.block = {}
-GUI.block.element = document.getElementById('block_data')
+GUI.object = {}
+GUI.object.element = document.getElementById('block_data')
 
-const updateBlockGUI = ( data ) => {
-    if (!data) return
+const toDegrees = ( rad ) => {
+    return rad * 180/Math.PI
+}
+const toRadians = ( rad ) => {
+    return rad * Math.PI/180
+}
 
-    GUI.block.element.classList.remove('hidden')
+const updateObjectGUI = ( obj ) => {
+    let data = obj.userData.objectData
 
-    GUI.block.element.querySelector('#block_type').innerText = data.ObjectIdentifier
+    if ( !data ) return
 
-    let posInputs = Array.from( GUI.block.element.querySelectorAll('#position input') )
+    let scale = obj.userData.objectType === 'block' ? data.BlockSize : data.Scale
+
+    GUI.object.element.classList.remove('hidden')
+
+    GUI.object.element.querySelector('#block_type').innerText = data.ObjectIdentifier
+
+    let posInputs = Array.from( GUI.object.element.querySelectorAll('#position input') )
     posInputs[0].value = data.Position.x
     posInputs[1].value = data.Position.y
     posInputs[2].value = data.Position.z
 
-    let scaleInputs = Array.from( GUI.block.element.querySelectorAll('#scale input') )
-    scaleInputs[0].value = data.BlockSize.x
-    scaleInputs[1].value = data.BlockSize.y
-    scaleInputs[2].value = data.BlockSize.z
+    let scaleInputs = Array.from( GUI.object.element.querySelectorAll('#scale input') )
+    scaleInputs[0].value = scale.x
+    scaleInputs[1].value = scale.y
+    scaleInputs[2].value = scale.z
 
-    let frozenInput = GUI.block.element.querySelector('#block_frozen')
+    let rotationInputs = Array.from( GUI.object.element.querySelectorAll('.rotation') )
+
+    let eulerRotation = convertFromUnityQuaternion( data.Rotation.x, data.Rotation.y, data.Rotation.z, data.Rotation.w )
+
+    rotationInputs[0].value = toDegrees(eulerRotation.x)
+    rotationInputs[1].value = toDegrees(eulerRotation.y)
+    rotationInputs[2].value = toDegrees(eulerRotation.z)
+
+    let frozenInput = GUI.object.element.querySelector('#block_frozen')
     frozenInput.checked = data.Kinematic
 
-    let weakInput = GUI.block.weakToggle
-    let unbreakableInput = GUI.block.unbreakableToggle
+    let weakInput = GUI.object.weakToggle
+    let unbreakableInput = GUI.object.unbreakableToggle
 
     if ( data.Data ) {
         weakInput.disabled = false
@@ -698,89 +847,138 @@ const updateBlockGUI = ( data ) => {
     }
 }
 
-GUI.block.numberInputs = GUI.block.element.querySelectorAll('input[type="number"]')
-for (let input of GUI.block.numberInputs) {
-    handleNumberInput( input )
+GUI.object.numberInputs = GUI.object.element.querySelectorAll('input[type="number"]')
+for (let input of GUI.object.numberInputs) {
+    if ( !input.classList.contains('auto_exclude') ) {
+        handleNumberInput( input )
+    }
 }
 
-GUI.block.toggleInputs = GUI.block.element.querySelectorAll('input[type="checkbox"]')
-for (let input of GUI.block.toggleInputs) {
+GUI.object.scaleInputs = GUI.object.element.querySelectorAll('.scale')
+for (let input of GUI.object.scaleInputs) {
+    input.addEventListener('input', e => {
+        updateObjectScale( EditingObject.selected, input.dataset.property, parseFloat(input.value) )
+    })
+    
+    input.addEventListener('focus', e => {
+        drawScalingAxisDisplay( EditingObject.selected, input.dataset.property )
+    })
+    
+    input.addEventListener('blur', e => {
+        if ( parseFloat(input.value) === 0 || parseFloat(input.value) === -0 ) { // negative zero yeah
+            input.value = 0.001
+            if (EditingObject.selected) updateObjectProperty( EditingObject.selected, input.dataset.property, parseFloat(input.value) )
+        }
+        
+        hideAxisDisplay()
+    })
+}
+
+GUI.object.rotationInputs = GUI.object.element.querySelectorAll('.rotation')
+GUI.object.rotationX = GUI.object.element.querySelector('#rotation_x')
+GUI.object.rotationY = GUI.object.element.querySelector('#rotation_y')
+GUI.object.rotationZ = GUI.object.element.querySelector('#rotation_z')
+
+for (let input of GUI.object.rotationInputs) {
+    input.addEventListener('input', e => {
+        let x = toRadians(parseFloat(GUI.object.rotationX.value))
+        let y = toRadians(parseFloat(GUI.object.rotationY.value))
+        let z = toRadians(parseFloat(GUI.object.rotationZ.value))
+
+        if (EditingObject.selected) {
+            updateObjectRotation( EditingObject.selected, { x: x, y: y, z: z } )
+        }
+    })
+    
+    input.addEventListener('focus', e => {
+        drawRotationalAxisDisplay( EditingObject.selected, input.id.split('_')[1] )
+    })
+
+    input.addEventListener('blur', e => {        
+        hideAxisDisplay()
+    })
+}
+
+GUI.object.toggleInputs = GUI.object.element.querySelectorAll('input[type="checkbox"]')
+for (let input of GUI.object.toggleInputs) {
     if ( !input.classList.contains('auto_exclude') ) {
         handleToggleInput( input )
     }
 }
 
-GUI.block.weakToggle = GUI.block.element.querySelector('#block_weak')
-GUI.block.weakToggle.addEventListener('change', e => {
-    if (EditingObject.selected) updateObjectWeak( EditingObject.selected, GUI.block.weakToggle.checked )
+GUI.object.weakToggle = GUI.object.element.querySelector('#block_weak')
+GUI.object.weakToggle.addEventListener('change', e => {
+    if (EditingObject.selected) updateObjectWeak( EditingObject.selected, GUI.object.weakToggle.checked )
 })
 
-GUI.block.unbreakableToggle = GUI.block.element.querySelector('#block_unbreakable')
-GUI.block.unbreakableToggle.addEventListener('change', e => {
-    if (EditingObject.selected) updateObjectUnbreakable( EditingObject.selected, GUI.block.unbreakableToggle.checked )
+GUI.object.unbreakableToggle = GUI.object.element.querySelector('#block_unbreakable')
+GUI.object.unbreakableToggle.addEventListener('change', e => {
+    if (EditingObject.selected) updateObjectUnbreakable( EditingObject.selected, GUI.object.unbreakableToggle.checked )
 })
 
 // prop (i think this is basically the exact same setup as the block gui oops)
-GUI.prop = {}
-GUI.prop.element = document.getElementById('prop_data')
+// GUI.prop = {}
+// GUI.prop.element = document.getElementById('prop_data')
 
-const updatePropGUI = ( data ) => {
-    if (!data) return
+// const updatePropGUI = ( data ) => {
+//     if (!data) return
 
-    GUI.prop.element.classList.remove('hidden')
+//     GUI.prop.element.classList.remove('hidden')
 
-    GUI.prop.element.querySelector('#prop_type').innerText = data.ObjectIdentifier
+//     GUI.prop.element.querySelector('#prop_type').innerText = data.ObjectIdentifier
 
-    let posInputs = Array.from( GUI.prop.element.querySelectorAll('#position input') )
-    posInputs[0].value = data.Position.x
-    posInputs[1].value = data.Position.y
-    posInputs[2].value = data.Position.z
+//     let posInputs = Array.from( GUI.prop.element.querySelectorAll('#position input') )
+//     posInputs[0].value = data.Position.x
+//     posInputs[1].value = data.Position.y
+//     posInputs[2].value = data.Position.z
 
-    let scaleInputs = Array.from( GUI.prop.element.querySelectorAll('#scale input') )
-    scaleInputs[0].value = data.Scale.x
-    scaleInputs[1].value = data.Scale.y
-    scaleInputs[2].value = data.Scale.z
+//     let scaleInputs = Array.from( GUI.prop.element.querySelectorAll('#scale input') )
+//     scaleInputs[0].value = data.Scale.x
+//     scaleInputs[1].value = data.Scale.y
+//     scaleInputs[2].value = data.Scale.z
 
-    let frozenInput = GUI.prop.element.querySelector('#prop_frozen')
-    frozenInput.checked = data.Kinematic
+//     let frozenInput = GUI.prop.element.querySelector('#prop_frozen')
+//     frozenInput.checked = data.Kinematic
 
-    let weakInput = GUI.prop.weakToggle
-    let unbreakableInput = GUI.prop.unbreakableToggle
+//     let weakInput = GUI.prop.weakToggle
+//     let unbreakableInput = GUI.prop.unbreakableToggle
 
-    if ( data.Data ) {
-        weakInput.disabled = false
-        weakInput.checked = data.Data[0].Options[0].BoolValue
+//     if ( data.Data ) {
+//         weakInput.disabled = false
+//         weakInput.checked = data.Data[0].Options[0].BoolValue
 
-        unbreakableInput.disabled = false
-        unbreakableInput.checked = data.Data[0].Options[1].BoolValue
-    } else {
-        weakInput.disabled = true
-        weakInput.checked = false
+//         unbreakableInput.disabled = false
+//         unbreakableInput.checked = data.Data[0].Options[1].BoolValue
+//     } else {
+//         weakInput.disabled = true
+//         weakInput.checked = false
 
-        unbreakableInput.disabled = true
-        unbreakableInput.checked = false
-    }
-}
+//         unbreakableInput.disabled = true
+//         unbreakableInput.checked = false
+//     }
+// }
 
-GUI.prop.numberInputs = GUI.prop.element.querySelectorAll('input[type="number"]')
-for (let input of GUI.prop.numberInputs) {
-    handleNumberInput( input )
-}
+// GUI.prop.numberInputs = GUI.prop.element.querySelectorAll('input[type="number"]')
+// for (let input of GUI.prop.numberInputs) {
+//     if ( !input.classList.contains('auto_exclude') ) {
+//         handleNumberInput( input )
+//     }
+// }
 
-GUI.prop.toggleInputs = GUI.prop.element.querySelectorAll('input[type="checkbox"]')
-for (let input of GUI.prop.toggleInputs) {
-    handleToggleInput( input )
-}
+// GUI.prop.toggleInputs = GUI.prop.element.querySelectorAll('input[type="checkbox"]')
+// for (let input of GUI.prop.toggleInputs) {
+//     handleToggleInput( input )
+// }
 
-GUI.prop.weakToggle = GUI.prop.element.querySelector('#prop_weak')
-GUI.prop.weakToggle.addEventListener('change', e => {
-    if (EditingObject.selected) updateObjectWeak( EditingObject.selected, GUI.prop.weakToggle.checked )
-})
+// GUI.prop.weakToggle = GUI.prop.element.querySelector('#prop_weak')
+// GUI.prop.weakToggle.addEventListener('change', e => {
+//     if (EditingObject.selected) updateObjectWeak( EditingObject.selected, GUI.prop.weakToggle.checked )
+// })
 
-GUI.prop.unbreakableToggle = GUI.prop.element.querySelector('#prop_unbreakable')
-GUI.prop.unbreakableToggle.addEventListener('change', e => {
-    if (EditingObject.selected) updateObjectUnbreakable( EditingObject.selected, GUI.prop.unbreakableToggle.checked )
-})
+// GUI.prop.unbreakableToggle = GUI.prop.element.querySelector('#prop_unbreakable')
+// GUI.prop.unbreakableToggle.addEventListener('change', e => {
+//     if (EditingObject.selected) updateObjectUnbreakable( EditingObject.selected, GUI.prop.unbreakableToggle.checked )
+// })
 
 GUI.deleteElements = document.querySelectorAll('.delete_selected_object')
 for (let el of GUI.deleteElements) {

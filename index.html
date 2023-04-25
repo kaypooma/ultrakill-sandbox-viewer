@@ -252,6 +252,7 @@
             <div><button id="close_help_dialog">close</button></div>
         </div>
 
+        <!-- Combine These Cool -->
         <div class="object_data_container hidden" id="block_data">
             <p id="block_type">object</p>
             <button class="delete_selected_object"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Pro 6.4.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) Copyright 2023 Fonticons, Inc. --><path fill="currentColor" d="M135.2 17.7L128 32H32C14.3 32 0 46.3 0 64S14.3 96 32 96H416c17.7 0 32-14.3 32-32s-14.3-32-32-32H320l-7.2-14.3C307.4 6.8 296.3 0 284.2 0H163.8c-12.1 0-23.2 6.8-28.6 17.7zM416 128H32L53.2 467c1.6 25.3 22.6 45 47.9 45H346.9c25.3 0 46.3-19.7 47.9-45L416 128z"/></svg></button>
@@ -272,9 +273,22 @@
             <div class="control">
                 <p>scale</p>
                 <div class="three_split" id="scale">
-                    <input type="number" class="scale_x" step="0.25" data-property="BlockSize.x">
-                    <input type="number" class="scale_y" step="0.25" data-property="BlockSize.y">
-                    <input type="number" class="scale_z" step="0.25" data-property="BlockSize.z">
+                    <input type="number" class="scale auto_exclude" data-property="x" step="0.25">
+                    <input type="number" class="scale auto_exclude" data-property="y" step="0.25">
+                    <input type="number" class="scale auto_exclude" data-property="z" step="0.25">
+
+                    <span>X</span>
+                    <span>Y</span>
+                    <span>Z</span>
+                </div>
+            </div>
+            <hr class="thin">
+            <div class="control">
+                <p>rotation</p>
+                <div class="three_split" id="rotation">
+                    <input type="number" class="rotation auto_exclude" id="rotation_x" step="15">
+                    <input type="number" class="rotation auto_exclude" id="rotation_y" step="15">
+                    <input type="number" class="rotation auto_exclude" id="rotation_z" step="15">
 
                     <span>X</span>
                     <span>Y</span>
@@ -297,54 +311,6 @@
                 <div class="toggle">
                     <label for="block_weak">unbreakable</label>
                     <input type="checkbox" id="block_unbreakable" class="auto_exclude">
-                </div>
-            </div>
-        </div>
-        <div class="object_data_container hidden" id="prop_data">
-            <p id="prop_type">object</p>
-            <button class="delete_selected_object"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Pro 6.4.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) Copyright 2023 Fonticons, Inc. --><path fill="currentColor" d="M135.2 17.7L128 32H32C14.3 32 0 46.3 0 64S14.3 96 32 96H416c17.7 0 32-14.3 32-32s-14.3-32-32-32H320l-7.2-14.3C307.4 6.8 296.3 0 284.2 0H163.8c-12.1 0-23.2 6.8-28.6 17.7zM416 128H32L53.2 467c1.6 25.3 22.6 45 47.9 45H346.9c25.3 0 46.3-19.7 47.9-45L416 128z"/></svg></button>
-            <hr>
-            <div class="control">
-                <p>position</p>
-                <div class="three_split" id="position">
-                    <input type="number" class="position_x" step="0.5" data-property="Position.x">
-                    <input type="number" class="position_y" step="0.5" data-property="Position.y">
-                    <input type="number" class="position_z" step="0.5" data-property="Position.z">
-
-                    <span>X</span>
-                    <span>Y</span>
-                    <span>Z</span>
-                </div>
-            </div>
-            <hr class="thin">
-            <div class="control">
-                <p>scale</p>
-                <div class="three_split" id="scale">
-                    <input type="number" class="scale_x" step="0.25" data-property="Scale.x">
-                    <input type="number" class="scale_y" step="0.25" data-property="Scale.y">
-                    <input type="number" class="scale_z" step="0.25" data-property="Scale.z">
-
-                    <span>X</span>
-                    <span>Y</span>
-                    <span>Z</span>
-                </div>
-            </div>
-            <hr class="thin">
-            <div class="control">
-                <div class="toggle">
-                    <label for="prop_frozen">frozen</label>
-                    <input type="checkbox" class="frozen" id="prop_frozen" data-property="Kinematic">
-                </div>
-            </div>
-            <hr class="thin">
-            <div class="control">
-                <div class="toggle">
-                    <label for="prop_weak">weak</label>
-                    <input type="checkbox" id="prop_weak" class="auto_exclude">
-                </div>
-                <div class="toggle">
-                    <label for="prop_weak">unbreakable</label>
-                    <input type="checkbox" id="prop_unbreakable" class="auto_exclude">
                 </div>
             </div>
         </div>
