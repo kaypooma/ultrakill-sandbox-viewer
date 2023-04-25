@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { OBJLoader } from 'three/addons/loaders/OBJLoader.js'
+import { TransformControls } from 'three/addons/controls/TransformControls.js'
 
 import CameraControls from 'camera-controls';
 
@@ -102,39 +103,6 @@ const objectMaterials = {
     'ultrakill.melon': { color: 0x67A54C },
 }
 
-const addBlock = ( scene, blockData ) => {
-    let geometry = new THREE.BoxGeometry( blockData.BlockSize.x, blockData.BlockSize.y, blockData.BlockSize.z )
-
-    let solid = new THREE.MeshLambertMaterial( objectMaterials[ blockData.ObjectIdentifier ] )
-    let frame = new THREE.MeshBasicMaterial({ color: 0x000000, wireframe: true, transparent: true, opacity: 0.4 })
-
-    let blockSolid = new THREE.Mesh( geometry, solid )
-    let blockFrame = new THREE.Mesh( geometry, frame )
-
-    blockSolid.userData.objectData = blockData
-    blockSolid.userData.objectType = 'block'
-    
-    for ( let cube of [ blockSolid, blockFrame ] ) {
-        cube.position.set( blockData.BlockSize.x/2, blockData.BlockSize.y/2, -blockData.BlockSize.z/2 )
-    }
-
-    let blockGroup = new THREE.Group()
-    blockGroup.add( blockSolid )
-    blockGroup.add( blockFrame )
-
-    let euler = convertFromUnityQuaternion( blockData.Rotation.x, blockData.Rotation.y, blockData.Rotation.z, blockData.Rotation.w )
-    
-    blockGroup.position.set( -blockData.Position.x, blockData.Position.y, blockData.Position.z )
-    blockGroup.rotation.copy( euler )
-
-    blockSolid.userData.parentGroup = blockGroup
-    blockSolid.userData.drawFunc = addBlock
-
-    scene.add( blockGroup )
-
-    return blockSolid
-}
-
 const PropGeneric = class PropGeneric {
     geometry
 
@@ -147,7 +115,7 @@ const PropGeneric = class PropGeneric {
     scaleGroup = new THREE.Group()
     positionGroup = new THREE.Group()
 
-    constructor( propData, options ) {
+    constructor( propData, options, block ) {
         this.geometry = options.geometry
         
         // material setup
@@ -162,7 +130,11 @@ const PropGeneric = class PropGeneric {
         this.scaleGroup.add( this.solidMesh )
         this.scaleGroup.add( this.frameMesh )
 
-        this.scaleGroup.scale.set( propData.Scale.x, propData.Scale.y, propData.Scale.z )
+        if (block) {
+            this.scaleGroup.scale.set( propData.BlockSize.x, propData.BlockSize.y, propData.BlockSize.z )
+        } else {
+            this.scaleGroup.scale.set( propData.Scale.x, propData.Scale.y, propData.Scale.z )            
+        }
 
         // position/rotation group
         this.positionGroup.add( this.scaleGroup )
@@ -172,11 +144,58 @@ const PropGeneric = class PropGeneric {
 
         // userdata setup
         this.solidMesh.userData.objectData = propData
-        this.solidMesh.userData.objectType = 'prop'
+        this.solidMesh.userData.objectType = block ? 'block' : 'prop'
         this.solidMesh.userData.parentGroup = this.positionGroup
+        this.solidMesh.userData.scaleGroup = this.scaleGroup
         this.solidMesh.userData.drawFunc = options.drawFunc
     }
 }
+
+const addBlock = ( scene, blockData ) => {
+    let block = new PropGeneric( blockData, {
+        geometry: new THREE.BoxGeometry(1, 1, 1),
+        drawFunc: addBlock
+    }, true)
+
+    for ( let mesh of [ block.solidMesh, block.frameMesh ] ) {
+        mesh.position.set(0.5, 0.5, -0.5)
+    }
+
+    scene.add( block.positionGroup )
+    return block.solidMesh    
+}
+// const addBlock = ( scene, blockData ) => {
+//     let geometry = new THREE.BoxGeometry( blockData.BlockSize.x, blockData.BlockSize.y, blockData.BlockSize.z )
+
+//     let solid = new THREE.MeshLambertMaterial( objectMaterials[ blockData.ObjectIdentifier ] )
+//     let frame = new THREE.MeshBasicMaterial({ color: 0x000000, wireframe: true, transparent: true, opacity: 0.4 })
+
+//     let blockSolid = new THREE.Mesh( geometry, solid )
+//     let blockFrame = new THREE.Mesh( geometry, frame )
+
+//     blockSolid.userData.objectData = blockData
+//     blockSolid.userData.objectType = 'block'
+    
+//     for ( let cube of [ blockSolid, blockFrame ] ) {
+//         cube.position.set( blockData.BlockSize.x/2, blockData.BlockSize.y/2, -blockData.BlockSize.z/2 )
+//     }
+
+//     let blockGroup = new THREE.Group()
+//     blockGroup.add( blockSolid )
+//     blockGroup.add( blockFrame )
+
+//     let euler = convertFromUnityQuaternion( blockData.Rotation.x, blockData.Rotation.y, blockData.Rotation.z, blockData.Rotation.w )
+    
+//     blockGroup.position.set( -blockData.Position.x, blockData.Position.y, blockData.Position.z )
+//     blockGroup.rotation.copy( euler )
+
+//     blockSolid.userData.parentGroup = blockGroup
+//     blockSolid.userData.drawFunc = addBlock
+
+//     scene.add( blockGroup )
+
+//     return blockSolid
+// }
 
 const addRamp = ( scene, propData ) => {
     let shape = new THREE.Shape()
@@ -311,6 +330,7 @@ const reloadScene = ( scene ) => {
     EditingObject.hovered = false
 
     disableGUI()
+    disableFreeTransform()
 
     drawSandboxBlocks(scene, Sandbox.getBlocks())
     drawSandboxProps(scene, Sandbox.getProps())
@@ -327,7 +347,16 @@ const addLights = ( scene ) => {
 // keyboard controls
 const KeyPressed = {}
 
+let reservedKeys = ['KeyR', 'KeyS', 'KeyG']
 document.addEventListener('keydown', e => {
+    if ( document.activeElement.tagName === 'INPUT' && reservedKeys.indexOf(e.code) !== -1 ) {
+        e.preventDefault()
+        e.stopPropagation()     
+        
+        document.getElementsByTagName('CANVAS')[0].focus()
+        document.activeElement.blur()
+    }
+
     if ( document.activeElement.tagName !== 'INPUT' ) {
         KeyPressed[e.code] = true
 
@@ -336,8 +365,9 @@ document.addEventListener('keydown', e => {
 
         if ( e.code === 'Escape' ) {
             updateSelectedState( EditingObject.selected, false )
-
             EditingObject.selected = false
+
+            disableFreeTransform()
 
             disableGUI()
         }
@@ -351,6 +381,41 @@ document.addEventListener('keydown', e => {
                 disableGUI()
             }
         }
+
+        if ( e.code === 'AltLeft' ) {
+            if ( FreeTransform.control ) enableTransformSnapping()
+        }
+
+        if ( KeyPressed.ControlLeft && e.code === 'KeyR' ) {
+            if ( EditingObject.hovered ) {
+                updateHoverState( EditingObject.hovered, false )
+                EditingObject.hovered = false    
+            }
+
+            if ( EditingObject.selected ) {
+                handleFreeRotate( EditingObject.selected )
+            }
+        }
+        if ( KeyPressed.ControlLeft && e.code === 'KeyG' ) {
+            if ( EditingObject.hovered ) {
+                updateHoverState( EditingObject.hovered, false )
+                EditingObject.hovered = false    
+            }
+
+            if ( EditingObject.selected ) {
+                handleFreeTranslate( EditingObject.selected )
+            }
+        }
+        if ( KeyPressed.ControlLeft && e.code === 'KeyS' ) {
+            if ( EditingObject.hovered ) {
+                updateHoverState( EditingObject.hovered, false )
+                EditingObject.hovered = false    
+            }
+
+            if ( EditingObject.selected ) {
+                handleFreeScale( EditingObject.selected )
+            }
+        }
     }
 })
 document.addEventListener('keyup', e => {
@@ -359,6 +424,10 @@ document.addEventListener('keyup', e => {
         
         e.preventDefault()
         e.stopPropagation()
+
+        if ( e.code === 'AltLeft' ) {
+            if ( FreeTransform.control ) disableTransformSnapping()
+        }
     }
 })
 
@@ -366,6 +435,13 @@ document.addEventListener('keyup', e => {
 const Mouse = {
     vector: new THREE.Vector2(),
     raycaster: new THREE.Raycaster()
+}
+const FreeTransform = {
+    control: false,
+
+    rotating: false,
+    translating: false,
+    scaling: false,
 }
 
 const getIntersectingObject = ( scene ) => {
@@ -382,6 +458,122 @@ const getIntersectingObject = ( scene ) => {
     }
     
     return mesh || false
+}
+
+const setupTransformControls = ( target ) => {
+    let transformControl = new TransformControls( camera, document.getElementsByTagName('CANVAS')[0] )
+
+    transformControl.attach(target)
+    transformControl.addEventListener('dragging-changed', e => {
+        controls.enabled = !e.value
+    })
+
+    return transformControl
+}
+
+const enableTransformSnapping = () => {
+    FreeTransform.control.rotationSnap = Math.PI*2 / 16
+    FreeTransform.control.translationSnap = 0.5
+    FreeTransform.control.setScaleSnap(0.25)
+}
+const disableTransformSnapping = () => {
+    FreeTransform.control.rotationSnap = null
+    FreeTransform.control.translationSnap = null
+    FreeTransform.control.setScaleSnap(null)
+}
+
+const handleFreeTranslate = ( obj, redrawing = false ) => {
+    if ( FreeTransform.control ) {
+        disableFreeTransform('translating')
+
+        if ( FreeTransform.translating && !redrawing ) {
+            FreeTransform.translating = false
+            return
+        }
+    }
+
+    let group = obj.userData.parentGroup
+    
+    FreeTransform.control = setupTransformControls( group )
+
+    FreeTransform.control.setMode('translate')
+    FreeTransform.control.addEventListener('mouseUp', e => {        
+        updateObjectPosition( obj, { x: group.position.x, y: group.position.y, z: group.position.z } )
+        updateObjectGUI( obj )
+    })
+
+    FreeTransform.redraw = () => handleFreeTranslate( EditingObject.selected, true )
+
+    scene.add( FreeTransform.control )
+    FreeTransform.translating = true
+}
+
+const handleFreeRotate = ( obj, redrawing = false ) => {
+    if ( FreeTransform.control ) {
+        disableFreeTransform('rotating')
+
+        if ( FreeTransform.rotating && !redrawing ) {
+            FreeTransform.rotating = false
+            return
+        }
+    }
+
+    let group = obj.userData.parentGroup
+    
+    FreeTransform.control = setupTransformControls( group )
+
+    FreeTransform.control.setMode('rotate')
+    FreeTransform.control.addEventListener('mouseUp', e => {        
+        updateObjectRotation( obj, { x: group.rotation.x, y: group.rotation.y, z: group.rotation.z } )
+        updateObjectGUI( obj )
+    })
+
+    FreeTransform.redraw = () => handleFreeRotate( EditingObject.selected, true )
+
+    scene.add( FreeTransform.control )
+    FreeTransform.rotating = true
+}
+
+const handleFreeScale = ( obj, redrawing = false ) => {
+    if ( FreeTransform.control ) {
+        disableFreeTransform('scaling')
+
+        if ( FreeTransform.scaling && !redrawing ) {
+            FreeTransform.scaling = false
+            return
+        }
+    }
+
+    let group = obj.userData.scaleGroup
+    
+    FreeTransform.control = setupTransformControls( group )
+
+    FreeTransform.control.setMode('scale')
+    FreeTransform.control.addEventListener('mouseUp', e => {        
+        updateObjectScaleAll( obj, { x: group.scale.x, y: group.scale.y, z: group.scale.z } )
+        updateObjectGUI( obj )
+    })
+
+    FreeTransform.redraw = () => handleFreeScale( EditingObject.selected, true )
+
+    scene.add( FreeTransform.control )
+    FreeTransform.scaling = true
+}
+
+const disableFreeTransform = (exclude) => {
+    let toDisable = ['rotating', 'translating', 'scaling']
+    toDisable.splice( toDisable.indexOf(exclude), 1 )
+
+    if ( FreeTransform.control ) {
+        FreeTransform.control.dispose()
+        scene.remove( FreeTransform.control )
+
+        for (let prop of toDisable) {
+            FreeTransform[prop] = false
+        }
+
+        FreeTransform.control = false
+    }
 }
 
 const updateHoverState = ( obj, state ) => {
@@ -435,6 +627,7 @@ const updateSelectedObject = () => {
     }
 
     hideAxisDisplay()
+    disableFreeTransform()
 }
 
 const handleMouseMove = ( e ) => {
@@ -444,7 +637,7 @@ const handleMouseMove = ( e ) => {
     Mouse.vector.x = Mouse.x
     Mouse.vector.y = Mouse.y
 
-    updateHoveredObject( getIntersectingObject( scene ) )
+    if (!FreeTransform.control) updateHoveredObject( getIntersectingObject( scene ) )
 }
 const handleMouseDown = ( e ) => {
     if (e.button === 2) { 
@@ -514,6 +707,29 @@ const updateObjectScale = ( obj, axis, value ) => {
 
     redrawObject( obj, data )
 }
+const updateObjectScaleAll = ( obj, scale ) => {
+    if ( !obj ) return
+
+    let data = getObjectData( obj )
+    let property = obj.userData.objectType === 'block' ? 'BlockSize' : 'Scale'
+    
+    data[property].x = scale.x
+    data[property].y = scale.y
+    data[property].z = scale.z
+
+    redrawObject( obj, data )
+}
+const updateObjectPosition = ( obj, position ) => {
+    if ( !obj ) return
+
+    let data = getObjectData( obj )
+    
+    data.Position.x = -position.x
+    data.Position.y = position.y
+    data.Position.z = position.z
+
+    redrawObject( obj, data )
+}
 const updateObjectRotation = ( obj, rotation ) => {
     if ( !obj ) return
 
@@ -539,6 +755,8 @@ const redrawObject = ( obj, newData ) => {
     updateSelectedState( EditingObject.selected, true )
 
     if (AxisDisplay.object) AxisDisplay.redraw()
+    if (FreeTransform.control) FreeTransform.redraw()
+
     Sandbox.updateObject( obj.userData.objectType, oldData, newData )
 }
 
@@ -728,6 +946,7 @@ const handleNumberInput = (input) => {
     if ( input.dataset.property.indexOf('Position') !== -1 ) {
         input.addEventListener('focus', e => {
             drawPositionalAxisDisplay( EditingObject.selected, input.dataset.property.split('.')[1] )
+            disableFreeTransform()
         })
     }
     if ( input.dataset.property.indexOf('Scale') !== -1 || input.dataset.property.indexOf('BlockSize') !== -1 ) {
@@ -862,6 +1081,7 @@ for (let input of GUI.object.scaleInputs) {
     
     input.addEventListener('focus', e => {
         drawScalingAxisDisplay( EditingObject.selected, input.dataset.property )
+        disableFreeTransform()
     })
     
     input.addEventListener('blur', e => {
@@ -892,6 +1112,7 @@ for (let input of GUI.object.rotationInputs) {
     
     input.addEventListener('focus', e => {
         drawRotationalAxisDisplay( EditingObject.selected, input.id.split('_')[1] )
+        disableFreeTransform()
     })
 
     input.addEventListener('blur', e => {        
@@ -1181,12 +1402,14 @@ const update = () => {
     let delta = clock.getDelta()
 
     // keyboard camera movement
-    if (KeyPressed.KeyW) controls.forward( Prefs.getMoveSpeed() * delta, false )
-    if (KeyPressed.KeyS) controls.forward( -Prefs.getMoveSpeed() * delta, false ) 
-    if (KeyPressed.KeyD) controls.truck(  Prefs.getMoveSpeed() * delta, false ) 
-    if (KeyPressed.KeyA) controls.truck( -Prefs.getMoveSpeed() * delta, false ) 
-    if (KeyPressed.KeyE) controls.elevate(  Prefs.getMoveSpeed() * delta, false ) 
-    if (KeyPressed.KeyQ) controls.elevate( -Prefs.getMoveSpeed() * delta, false ) 
+    if (!KeyPressed.ControlLeft) {
+        if (KeyPressed.KeyW) controls.forward( Prefs.getMoveSpeed() * delta, false )
+        if (KeyPressed.KeyS) controls.forward( -Prefs.getMoveSpeed() * delta, false ) 
+        if (KeyPressed.KeyD) controls.truck(  Prefs.getMoveSpeed() * delta, false ) 
+        if (KeyPressed.KeyA) controls.truck( -Prefs.getMoveSpeed() * delta, false ) 
+        if (KeyPressed.KeyE) controls.elevate(  Prefs.getMoveSpeed() * delta, false ) 
+        if (KeyPressed.KeyQ) controls.elevate( -Prefs.getMoveSpeed() * delta, false ) 
+    }
 
     controls.update( delta )
 
