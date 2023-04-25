@@ -231,6 +231,40 @@
             .delete_selected_object:active {
                 border: 2px inset red;
             }
+
+            .toggle label:after {
+                content: 'x';
+                text-align: center;
+                line-height: 18px;
+
+                text-shadow: none;
+
+                display: inline-block;
+
+                width: 20px;
+                height: 20px;
+
+                background: #222;
+                border: 1px outset #222;
+                color: #222;
+
+                margin-left: 10px;                
+            }
+            input[type="checkbox"]:checked + label:after {
+                background: red;
+                border: 1px inset #222;
+            }
+            input[type="checkbox"][disabled] + label:after {
+                background: #aaa;
+                border: 1px solid #aaa;
+
+                color: #ddd;
+            }
+
+            .toggle input[type="checkbox"] {
+                opacity: 0;
+                position: absolute;
+            }
         </style>
     </head>
     <body>
@@ -254,6 +288,8 @@
             <p>CTRL+G for translation</p>
             <p>CTRL+R for rotation</p>
             <p>CTRL+S for scaling</p>
+
+            <p>ALT to enable snapping</p>
 
             <div><button id="close_help_dialog">close</button></div>
         </div>
@@ -304,19 +340,19 @@
             <hr class="thin">
             <div class="control">
                 <div class="toggle">
-                    <label for="block_frozen">frozen</label>
                     <input type="checkbox" id="block_frozen" data-property="Kinematic">
+                    <label for="block_frozen">frozen</label>
                 </div>
             </div>
             <hr class="thin">
             <div class="control">
                 <div class="toggle">
-                    <label for="block_weak">weak</label>
                     <input type="checkbox" id="block_weak" class="auto_exclude">
+                    <label for="block_weak">weak</label>
                 </div>
                 <div class="toggle">
-                    <label for="block_weak">unbreakable</label>
                     <input type="checkbox" id="block_unbreakable" class="auto_exclude">
+                    <label for="block_unbreakable">unbreakable</label>
                 </div>
             </div>
         </div>

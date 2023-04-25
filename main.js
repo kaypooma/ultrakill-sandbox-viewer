@@ -1444,3 +1444,13 @@ Promise.all( modelsToLoad.map( x => loadAsyncWithModelName(x) ) ).then( models =
     
     init()
 })
+
+if ( import.meta.env.MODE !== 'development' ) {
+    window.onbeforeunload = e => {
+        for (let key in KeyPressed) {
+            KeyPressed[key] = false
+        }
+
+        return 'Changes you made may not be saved.'
+    }
+}
