@@ -5,6 +5,9 @@
    "ultrakill.brush-metal": {
       "color": "0x56544A"
    },
+   "ultrakill.brush-armor": {
+      "color": "0x4D4D4D"
+   },
    "ultrakill.brush-wood": {
       "color": "0xAC8E65"
    },
