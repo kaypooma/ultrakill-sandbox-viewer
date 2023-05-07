@@ -25,7 +25,6 @@ const createObjBtn = (objIdx, imgLoc = "") => {
 	label.innerText = nameList[objIdx]
 	
 	button.appendChild(img)
-	button.innerHTML += "<br>"
 	button.appendChild(label)
 	
 	button.addEventListener('click', () => {
