@@ -161,6 +161,22 @@
         <div class="object_data_container" id="disabled_data">
             <p>no object selected</p>
         </div>
+		
+		<div class="center overlay" id="startup-panel-container"
+			style="background-color: #444444;">
+			<div class="uk-panel" id="startup-panel" style="width: 800px; height: 500px; text-align: center;">
+				<!-- I hate centering things -->
+				<div style="top: 25%; position: relative;">
+					<img style="width: 400px; margin-left: auto; margin-right: auto; display: block;" 
+					src="assets/images/Logo.png"></img><br>
+					Sandbox Save Editor
+					<br><br>
+					<button style="width: 200px; height: 50px;"
+					onclick="SetOverlayVisible(false, 'startup');">New Save</button><br><br>
+					<button style="width: 200px; height: 50px;">Open Save</button><br>
+				</div>
+			</div>
+		</div>
         
 		<!-- standard js used to handle the overlay panels -->
 		<script src="gui.js"></script>
@@ -169,6 +185,7 @@
 		<script>
 			RegisterOverlayPanel('help');
 			RegisterOverlayPanel('addObject');
+			RegisterOverlayPanel('startup');
 			
 			SetOverlayVisible(false, 'help');
 			SetOverlayVisible(false, 'addObject');
