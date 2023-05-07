@@ -6,6 +6,8 @@ import CameraControls from 'camera-controls';
 
 import { SandboxManager } from './sandman';
 
+import { Logger } from './logger';
+
 import nameList from './data/names.json';
 import objectMaterials from './data/materials.json';
 import defaultSceneData from './data/defaultscene.json';
@@ -25,9 +27,7 @@ const AxisDisplay = {}
 
 let sandboxFilename
 
-const test = () => {
-	console.log("Called from another file successfully!")
-}
+let mainLog = new Logger("MAIN");
 
 // file stuff
 const fileElement = document.getElementById('sandbox_file')
@@ -266,24 +266,28 @@ const drawSandboxProps = ( scene, props ) => {
     for ( let i=0; i<props.length; i++ ) {
         let propData = props[i]
 
-        if ( propData.ObjectIdentifier.indexOf('ultrakill.ramp') !== -1 ) {
-            addRamp( scene, propData )
-        }
-
-        if ( propData.ObjectIdentifier.indexOf('barrel') !== -1 ) {
-            addBarrel( scene, propData )
-        }
-
-        if ( propData.ObjectIdentifier === 'ultrakill.barrier' ) {
-            addBarrier( scene, propData )
-        }
-
-        if ( propData.ObjectIdentifier === 'ultrakill.tree' ) {
-            addTree( scene, propData )
-        }
-
-        if ( propData.ObjectIdentifier === 'ultrakill.melon' ) {
-            addMelon( scene, propData )
+        mainLog.Info(`Found prop with type ${propData.ObjectIdentifier}`)
+        switch( propData.ObjectIdentifier ) {
+            case "ultrakill.explosive-barrel":
+            case "ultrakill.barrel":
+                addBarrel( scene, propData )
+                break
+            case "ultrakill.ramp-stone":
+            case "ultrakill.ramp":
+                addRamp( scene, propData )
+                break
+            case "ultrakill.barrier":
+                addBarrier( scene, propData )
+                break
+            case "ultrakill.tree":
+                addTree( scene, propData )
+                break
+            case "ultrakill.melon":
+                addMelon( scene, propData )
+                break
+            default:
+                mainLog.Warn(`Unknown prop type ${propData.ObjectIdentifier} found. This object will not be included or be editable.`)
+                break
         }
     }
 }
