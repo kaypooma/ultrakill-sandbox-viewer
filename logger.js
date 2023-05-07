@@ -13,12 +13,29 @@ const LogManager = class LogManager {
     }
 
     addEntry(msg, type = "unknown") {
+        switch(type) {
+            case "warning":
+                this.numWarning++
+                break
+            case "error":
+                this.numError++
+                break
+        }
+        
+        this.updateGUI()
+    }
 
+    updateGUI() {
+        if (this.numError > 0 || this.numWarning > 0) {
+            document.getElementById("loginf-notice").style.display = "block"
+        }
+        document.getElementById("log-wcount").innerText = this.numWarning
+        document.getElementById("log-ecount").innerText = this.numError
     }
 }
 
 // only one log manager exists in the page and is global
-//global.logManager = new LogManager()
+global.logManager = new LogManager()
 
 // loggers that call the global log manager but can exist multiple times fine
 const Logger = class Logger {
@@ -48,7 +65,7 @@ const Logger = class Logger {
         }
 
         let fullstr = `[${this.channelName}][${prefix}] ${msg}`
-        //global.logManager.addEntry(fullstr, type)
+        global.logManager.addEntry(fullstr, type)
         console.log(fullstr);
     }
 
