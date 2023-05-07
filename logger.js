@@ -16,9 +16,14 @@ const LogManager = class LogManager {
         switch(type) {
             case "warning":
                 this.numWarning++
+                console.warn(msg)
                 break
             case "error":
                 this.numError++
+                console.error(msg)
+                break
+            default:
+                console.log(msg)
                 break
         }
         
@@ -66,7 +71,6 @@ const Logger = class Logger {
 
         let fullstr = `[${this.channelName}][${prefix}] ${msg}`
         global.logManager.addEntry(fullstr, type)
-        console.log(fullstr);
     }
 
     Info(msg) {
