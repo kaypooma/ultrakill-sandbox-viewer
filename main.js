@@ -5,7 +5,10 @@ import { TransformControls } from 'three/addons/controls/TransformControls.js'
 import CameraControls from 'camera-controls';
 
 import { SandboxManager } from './sandman';
-import { defaultSceneData } from './defaultscene';
+
+import nameList from './data/names.json';
+import objectMaterials from './data/materials.json';
+import defaultSceneData from './data/defaultscene.json';
 
 CameraControls.install({ THREE: THREE })
 
@@ -21,6 +24,10 @@ const EditingObject = {
 const AxisDisplay = {}
 
 let sandboxFilename
+
+const test = () => {
+	console.log("Called from another file successfully!")
+}
 
 // file stuff
 const fileElement = document.getElementById('sandbox_file')
@@ -79,30 +86,6 @@ const convertToUnityQuaternion = ( x, y, z ) => {
     return quaternion
 }
 
-const objectMaterials = {
-    'ultrakill.brush-plastic': { color: 0xC8C3AB },
-    'ultrakill.brush-metal': { color: 0x56544A },
-    'ultrakill.brush-wood': { color: 0xAC8E65 },
-    'ultrakill.brush-grass': { color: 0x708835 },
-    'ultrakill.brush-glass': { color: 0xB3B1A8, transparent: true, opacity: 0.7 },
-    'ultrakill.brush-water': { color: 0x76AAB4, transparent: true, opacity: 0.7 },
-    'ultrakill.brush-hot-sand': { color: 0xECA33A },
-    'ultrakill.brush-lava': { color: 0xFFFF0E, transparent: true, opacity: 0.7 },
-    'ultrakill.brush-acid': { color: 0xD59B15, transparent: true, opacity: 0.7 },
-
-    'ultrakill.ramp': { color: 0x877057 },
-    'ultrakill.ramp-stone': { color: 0x838179 },
-
-    'ultrakill.barrel': { color: 0x995D36 },
-    'ultrakill.explosive-barrel': { color: 0xFF2126 },
-
-    'ultrakill.barrier': { color: 0xC8C3AB },
-    
-    'ultrakill.tree': { color: 0x6A652B },
-
-    'ultrakill.melon': { color: 0x67A54C },
-}
-
 const PropGeneric = class PropGeneric {
     geometry
 
@@ -119,7 +102,9 @@ const PropGeneric = class PropGeneric {
         this.geometry = options.geometry
         
         // material setup
-        this.solidMaterial = new THREE.MeshLambertMaterial( objectMaterials[ propData.ObjectIdentifier ] ) || new THREE.MeshLambertMaterial({ color: 0xff00ff })
+		let mat = objectMaterials[ propData.ObjectIdentifier ]
+		if (mat != null) mat.color = Number(mat.color)
+        this.solidMaterial = new THREE.MeshLambertMaterial( mat ) || new THREE.MeshLambertMaterial({ color: 0xff00ff })
         this.frameMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, wireframe: true, transparent: true, opacity: 0.4 })
 
         // mesh setup
@@ -343,6 +328,48 @@ const addLights = ( scene ) => {
     let ambient = new THREE.AmbientLight( 0xffffff, 0.5 )
     scene.add( ambient )
 }
+
+const moveBut = document.getElementById('mode-move');
+const rotBut = document.getElementById('mode-rot');
+const scaleBut = document.getElementById('mode-scale');
+const noneBut = document.getElementById('mode-none');
+
+moveBut.addEventListener('click', () => {
+	if ( EditingObject.hovered ) {
+		updateHoverState( EditingObject.hovered, false )
+		EditingObject.hovered = false    
+	}
+
+	if ( EditingObject.selected ) {
+		handleFreeTranslate( EditingObject.selected )
+	}
+});
+
+rotBut.addEventListener('click', () => {
+	if ( EditingObject.hovered ) {
+		updateHoverState( EditingObject.hovered, false )
+		EditingObject.hovered = false    
+	}
+
+	if ( EditingObject.selected ) {
+		handleFreeRotate( EditingObject.selected )
+	}
+});
+
+scaleBut.addEventListener('click', () => {
+	if ( EditingObject.hovered ) {
+		updateHoverState( EditingObject.hovered, false )
+		EditingObject.hovered = false    
+	}
+
+	if ( EditingObject.selected ) {
+		handleFreeScale( EditingObject.selected )
+	}
+});
+
+noneBut.addEventListener('click', () => {
+	disableFreeTransform()
+});
 
 // keyboard controls
 const KeyPressed = {}
@@ -1025,7 +1052,8 @@ const updateObjectGUI = ( obj ) => {
 
     GUI.object.element.classList.remove('hidden')
 
-    GUI.object.element.querySelector('#block_type').innerText = data.ObjectIdentifier
+	console.log(data.ObjectIdentifier)
+    GUI.object.element.querySelector('#block_type').innerText = nameList[ data.ObjectIdentifier ]
 
     let posInputs = Array.from( GUI.object.element.querySelectorAll('#position input') )
     posInputs[0].value = data.Position.x
@@ -1225,16 +1253,7 @@ document.getElementById('save').addEventListener('click', e => {
     URL.revokeObjectURL(link.href)
 })
 
-// help
-if ( !localStorage.getItem('seenHelpDialog') ) document.getElementById('help_dialog').style.display = 'flex'
 
-document.getElementById('close_help_dialog').addEventListener('click', () => {
-    document.getElementById('help_dialog').style.display = 'none'
-    localStorage.setItem('seenHelpDialog', 'true')
-})
-document.getElementById('help').addEventListener('click', () => {
-    document.getElementById('help_dialog').style.display = 'flex'
-})
 
 // render stuff
 const setupDefaultScene = ( controls ) => {
@@ -1242,7 +1261,7 @@ const setupDefaultScene = ( controls ) => {
     controls.truck( -60, false )
     controls.rotate( Math.PI - Math.PI/9, 0, false )
 
-    Sandbox.loadMap( JSON.parse(defaultSceneData) )
+    Sandbox.loadMap( defaultSceneData )
     reloadScene( scene )
 }
 

@@ -4,6 +4,7 @@
     "three": "^0.151.3"
   },
   "devDependencies": {
+    "sass": "^1.62.1",
     "vite": "^4.3.1"
   }
 }
