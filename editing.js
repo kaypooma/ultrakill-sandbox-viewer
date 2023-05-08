@@ -35,10 +35,10 @@ const createObjBtn = (objIdx, imgLoc = "") => {
 	return button
 }
 
-const UpdateEntityList = () => {
-	let ListE = document.getElementById("entitylist")
-	for (var idx in data.entities) {
-		var ent = data.entities[ idx ]
+const UpdatePropList = () => {
+	let ListE = document.getElementById("proplist")
+	for (var idx in data.props) {
+		var ent = data.props[ idx ]
 		ListE.appendChild(createObjBtn(ent, "props/"))
 	}
 }
@@ -62,21 +62,21 @@ const UpdateEnemyList = () => {
 document.getElementById("propTab").addEventListener('click', () => {
 	document.getElementById("enemylist").style.display = 'none';
 	document.getElementById("brushlist").style.display = 'none';
-	document.getElementById("entitylist").style.display = 'grid';
+	document.getElementById("proplist").style.display = 'grid';
 })
 
 document.getElementById("enemyTab").addEventListener('click', () => {
 	document.getElementById("enemylist").style.display = 'grid';
 	document.getElementById("brushlist").style.display = 'none';
-	document.getElementById("entitylist").style.display = 'none';
+	document.getElementById("proplist").style.display = 'none';
 })
 
 document.getElementById("brushTab").addEventListener('click', () => {
 	document.getElementById("enemylist").style.display = 'none';
 	document.getElementById("brushlist").style.display = 'grid';
-	document.getElementById("entitylist").style.display = 'none';
+	document.getElementById("proplist").style.display = 'none';
 })
 
-UpdateEntityList()
+UpdatePropList()
 UpdateBrushList()
 UpdateEnemyList()
