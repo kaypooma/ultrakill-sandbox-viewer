@@ -5,10 +5,7 @@
  TODO: go through and clean up the other main.js code so we can merge stuff
 */
 
-import entityList from './data/entities.json';
-import brushList from './data/brushes.json';
-import enemyList from './data/enemies.json';
-import nameList from './data/names.json';
+import * as data from './data.js'; 
 
 const createObjBtn = (objIdx, imgLoc = "") => {
 	let button = document.createElement("div")
@@ -22,7 +19,7 @@ const createObjBtn = (objIdx, imgLoc = "") => {
 	img.style.verticalAlign = "middle"
 	
 	let label = document.createElement("label")
-	label.innerText = nameList[objIdx]
+	label.innerText = data.names[objIdx]
 	
 	button.appendChild(img)
 	button.appendChild(label)
@@ -40,24 +37,24 @@ const createObjBtn = (objIdx, imgLoc = "") => {
 
 const UpdateEntityList = () => {
 	let ListE = document.getElementById("entitylist")
-	for (var idx in entityList) {
-		var ent = entityList[ idx ]
+	for (var idx in data.entities) {
+		var ent = data.entities[ idx ]
 		ListE.appendChild(createObjBtn(ent, "props/"))
 	}
 }
 
 const UpdateBrushList = () => {
 	let ListE = document.getElementById("brushlist")
-	for (var idx in brushList) {
-		var brush = brushList[ idx ]
+	for (var idx in data.brushes) {
+		var brush = data.brushes[ idx ]
 		ListE.appendChild(createObjBtn(brush, "brushes/"))
 	}
 }
 
 const UpdateEnemyList = () => {
 	let ListE = document.getElementById("enemylist")
-	for (var idx in enemyList) {
-		var enemy = enemyList[ idx ]
+	for (var idx in data.enemies) {
+		var enemy = data.enemies[ idx ]
 		ListE.appendChild(createObjBtn(enemy, "enemies/"))
 	}
 }

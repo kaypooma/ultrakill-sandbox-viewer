@@ -8,8 +8,7 @@ import { SandboxManager } from './sandman';
 
 import { Logger } from './logger';
 
-import nameList from './data/names.json';
-import objectMaterials from './data/materials.json';
+import * as jsondata from './data.js';
 import defaultSceneData from './data/defaultscene.json';
 
 CameraControls.install({ THREE: THREE })
@@ -102,7 +101,7 @@ const PropGeneric = class PropGeneric {
         this.geometry = options.geometry
         
         // material setup
-		let mat = objectMaterials[ propData.ObjectIdentifier ]
+		let mat = jsondata.materials[ propData.ObjectIdentifier ]
 		if (mat != null) mat.color = Number(mat.color)
         this.solidMaterial = new THREE.MeshLambertMaterial( mat ) || new THREE.MeshLambertMaterial({ color: 0xff00ff })
         this.frameMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, wireframe: true, transparent: true, opacity: 0.4 })
@@ -1056,8 +1055,7 @@ const updateObjectGUI = ( obj ) => {
 
     GUI.object.element.classList.remove('hidden')
 
-	console.log(data.ObjectIdentifier)
-    GUI.object.element.querySelector('#block_type').innerText = nameList[ data.ObjectIdentifier ]
+    GUI.object.element.querySelector('#block_type').innerText = jsondata.names[ data.ObjectIdentifier ]
 
     let posInputs = Array.from( GUI.object.element.querySelectorAll('#position input') )
     posInputs[0].value = data.Position.x
