@@ -6,8 +6,8 @@ import CameraControls from 'camera-controls';
 
 import { SandboxManager } from './sandman';
 import { Logger } from './logger';
-import { AddObjectMenu } from './AddObjectMenu';
-import { ObjectGui } from './ObjectGUI';
+import { AddObjectMenu } from './addobjectmenu';
+import { ObjectGui } from './objectgui';
 import { PropGeneric } from './propgeneric';
 import { MathEx } from './mathex';
 
