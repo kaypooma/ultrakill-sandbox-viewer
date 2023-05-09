@@ -11,7 +11,10 @@
     </head>
     <body>
         <div id="file_input_container">
-            <input type="file" id="sandbox_file">
+        		<button onclick="document.getElementById('sandbox_file').click();">
+        			Open File
+        		</button>
+            <input type="file" style="opacity: 0; height: 0;" id="sandbox_file">
         </div>
         <div id="save_container">
             <button id="save">save</button>
@@ -118,9 +121,9 @@
             <div class="control">
                 <p>scale</p>
                 <div class="three_split" id="scale">
-                    <input type="number" class="scale auto_exclude" data-property="x" step="0.25">
-                    <input type="number" class="scale auto_exclude" data-property="y" step="0.25">
-                    <input type="number" class="scale auto_exclude" data-property="z" step="0.25">
+                    <input type="number" class="scale auto_exclude" id="scale_x" data-property="x" step="0.25">
+                    <input type="number" class="scale auto_exclude" id="scale_y" data-property="y" step="0.25">
+                    <input type="number" class="scale auto_exclude" id="scale_z" data-property="z" step="0.25">
 
                     <span>X</span>
                     <span>Y</span>
@@ -143,19 +146,25 @@
             <hr class="thin">
             <div class="control">
                 <div class="toggle">
-                    <input type="checkbox" id="block_frozen" data-property="Kinematic">
-                    <label for="block_frozen">frozen</label>
+                		<label class="container">frozen
+                    	<input type="checkbox" id="block_frozen" data-property="Kinematic">
+                    	<span class="checkmark"></span>
+                    </label>
                 </div>
             </div>
             <hr class="thin">
             <div class="control">
                 <div class="toggle">
-                    <input type="checkbox" id="block_weak" class="auto_exclude">
-                    <label for="block_weak">weak</label>
+                	<label class="container">weak
+                		<input type="checkbox" id="block_weak" class="auto_exclude">
+  									<span class="checkmark"></span>
+  								</label>
                 </div>
                 <div class="toggle">
+                	<label class="container">unbreakable
                     <input type="checkbox" id="block_unbreakable" class="auto_exclude">
-                    <label for="block_unbreakable">unbreakable</label>
+                		<span class="checkmark"></span>
+                	</label>
                 </div>
             </div>
         </div>
@@ -165,7 +174,7 @@
 		
 		<div class="center overlay" id="startup-panel-container"
 			style="background-color: #444444;">
-			<div class="uk-panel" id="startup-panel" style="width: 800px; height: 500px; text-align: center;">
+			<div class="uk-panel uk-panel-open" id="startup-panel" style="width: 800px; height: 500px; text-align: center;">
 				<!-- I hate centering things -->
 				<div style="top: 25%; position: relative;">
 					<img style="width: 400px; margin-left: auto; margin-right: auto; display: block;" 
@@ -174,7 +183,10 @@
 					<br><br>
 					<button style="width: 200px; height: 50px;"
 					onclick="SetOverlayVisible(false, 'startup');">New Save</button><br><br>
-					<button style="width: 200px; height: 50px;">Open Save</button><br>
+					<button style="width: 200px; height: 50px;"
+						onclick="document.getElementById('sandbox_file').click();">
+						Open Save
+					</button><br>
 				</div>
 			</div>
 		</div>
@@ -193,8 +205,7 @@
         
 		<!-- standard js used to handle the overlay panels -->
 		<script src="gui.js"></script>
-        <script type="module" src="main.js"></script>
-		<script type="module" src="editing.js"></script>
+    <script type="module" src="main.js"></script>
 		<script>
 			RegisterOverlayPanel('help');
 			RegisterOverlayPanel('addObject');

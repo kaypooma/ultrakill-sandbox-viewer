@@ -5,28 +5,36 @@ import { TransformControls } from 'three/addons/controls/TransformControls.js'
 import CameraControls from 'camera-controls';
 
 import { SandboxManager } from './sandman';
-
 import { Logger } from './logger';
+import { AddObjectMenu } from './AddObjectMenu';
+import { ObjectGui } from './ObjectGUI';
+import { PropGeneric } from './propgeneric';
+import { MathEx } from './mathex';
 
-import * as jsondata from './data.js';
+// import * as jsondata from './data.js';
 import defaultSceneData from './data/defaultscene.json';
 
 CameraControls.install({ THREE: THREE })
 
+const AddMenu = new AddObjectMenu("unused")
 const Sandbox = new SandboxManager()
 const Prefs = { 
     moveSpeed: 10, moveSpeedMult: 10,
     getMoveSpeed: () => { return Prefs.moveSpeed*(KeyPressed.ShiftLeft ? Prefs.moveSpeedMult : 1) },
 }
+
 const EditingObject = {
     hovered: false,
     selected: false
 }
+
 const AxisDisplay = {}
 
 let sandboxFilename
 
-let mainLog = new Logger("MAIN");
+// loggers
+let Log_Main = new Logger("Main")
+let Log_FS = new Logger("FS")
 
 // file stuff
 const fileElement = document.getElementById('sandbox_file')
@@ -36,9 +44,12 @@ const handleSandboxFile = () => {
 
     if (files[0]) {
         let reader = new FileReader()
-        reader.onload = (e) => {
+        reader.onload = (e) => { 
             Sandbox.loadMap( JSON.parse(e.target.result) )
             reloadScene(scene)
+            if (IsOverlayVisible('startup') == true) {
+                SetOverlayVisible(false, 'startup');
+            }
         }
 
         reader.readAsText(files[0])
@@ -48,92 +59,53 @@ const handleSandboxFile = () => {
 
 fileElement.addEventListener('change', handleSandboxFile, false)
 
-
 // 3d stuff
 let scene, camera, renderer
 let controls
 
 const clock = new THREE.Clock()
 
-// unity quaternion ->       x, y, z,  w
-// to threejs quaternion -> -x, y, z, -w
-// to euler
-// 
+const createNewBlock = (id) => {
+    // spawn near the camera because sandbox tends to be very offset.
+    let spawnPos = {'x': 0, 'y': 0, 'z': 0}
 
-const convertFromUnityQuaternion = ( x, y, z, w ) => {
-    let quaternion = new THREE.Quaternion( -x, y, z, -w )
+    spawnPos.x = -camera.position.x
+    spawnPos.y = camera.position.y
+    spawnPos.z = camera.position.z - 9
 
-    let v = new THREE.Euler()
+    let Block = {
+        'BlockSize': {'x': 1, 'y': 1, 'z': 1},
 
-    v.setFromQuaternion( quaternion )
-    v.y += Math.PI
-    v.z *= -1
+        'BlockType': 1,
+        'Kinematic': false,
+        'ObjectIdentifier': id,
 
-    return v
+        'Position': spawnPos,
+        'Rotation': {'x': 0, 'y': 0, 'z': 0, 'w': 0},
+        'Scale': {'x': 1, 'y': 1, 'z': 1},
+
+        'Data': [
+            {
+                'Key': 'breakable',
+                'Options': [
+                    {
+                        'Key': 'weak',
+                        'BoolValue': false
+                    },
+                    {
+                        'Key': 'unbreakable',
+                        'BoolValue': false
+                    }
+                ]
+            }
+        ]
+    };
+
+    Log_Main.Info(`Creating new block of type ${id}`)
+    Sandbox.addObject('block', Block)
+    addBlock( scene, Block )
 }
-const convertToUnityQuaternion = ( x, y, z ) => {
-    let euler = new THREE.Euler( x, y, z )
-
-    euler.y -= Math.PI
-    euler.z *= -1
-
-    let quaternion = new THREE.Quaternion().setFromEuler( euler )
-
-    quaternion.x *= -1
-    quaternion.w *= -1
-
-    return quaternion
-}
-
-const PropGeneric = class PropGeneric {
-    geometry
-
-    solidMaterial
-    frameMaterial
-
-    solidMesh
-    frameMesh
-
-    scaleGroup = new THREE.Group()
-    positionGroup = new THREE.Group()
-
-    constructor( propData, options, block ) {
-        this.geometry = options.geometry
-        
-        // material setup
-		let mat = jsondata.materials[ propData.ObjectIdentifier ]
-		if (mat != null) mat.color = Number(mat.color)
-        this.solidMaterial = new THREE.MeshLambertMaterial( mat ) || new THREE.MeshLambertMaterial({ color: 0xff00ff })
-        this.frameMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, wireframe: true, transparent: true, opacity: 0.4 })
-
-        // mesh setup
-        this.solidMesh = new THREE.Mesh( this.geometry, this.solidMaterial )
-        this.frameMesh = new THREE.Mesh( this.geometry, this.frameMaterial )
-
-        // scale group
-        this.scaleGroup.add( this.solidMesh )
-        this.scaleGroup.add( this.frameMesh )
-
-        if (block) {
-            this.scaleGroup.scale.set( propData.BlockSize.x, propData.BlockSize.y, propData.BlockSize.z )
-        } else {
-            this.scaleGroup.scale.set( propData.Scale.x, propData.Scale.y, propData.Scale.z )            
-        }
-
-        // position/rotation group
-        this.positionGroup.add( this.scaleGroup )
-        
-        this.positionGroup.position.set( -propData.Position.x, propData.Position.y, propData.Position.z )
-        this.positionGroup.rotation.copy( convertFromUnityQuaternion( propData.Rotation.x, propData.Rotation.y, propData.Rotation.z, propData.Rotation.w ) )
-
-        // userdata setup
-        this.solidMesh.userData.objectData = propData
-        this.solidMesh.userData.objectType = block ? 'block' : 'prop'
-        this.solidMesh.userData.parentGroup = this.positionGroup
-        this.solidMesh.userData.scaleGroup = this.scaleGroup
-        this.solidMesh.userData.drawFunc = options.drawFunc
-    }
-}
+AddMenu.addCallbacks['brushes'] = createNewBlock
 
 const addBlock = ( scene, blockData ) => {
     let block = new PropGeneric( blockData, {
@@ -148,6 +120,7 @@ const addBlock = ( scene, blockData ) => {
     scene.add( block.positionGroup )
     return block.solidMesh    
 }
+
 // const addBlock = ( scene, blockData ) => {
 //     let geometry = new THREE.BoxGeometry( blockData.BlockSize.x, blockData.BlockSize.y, blockData.BlockSize.z )
 
@@ -202,6 +175,7 @@ const addRamp = ( scene, propData ) => {
     scene.add( ramp.positionGroup )
     return ramp.solidMesh
 }
+
 const addBarrel = ( scene, propData ) => {
     let barrel = new PropGeneric( propData, {
         geometry: new THREE.CylinderGeometry( 1, 1, 3, 8 ),
@@ -216,6 +190,7 @@ const addBarrel = ( scene, propData ) => {
     scene.add( barrel.positionGroup )
     return barrel.solidMesh
 }
+
 const addBarrier = ( scene, propData ) => {
     let barrier = new PropGeneric( propData, {
         geometry: objectGeometry['ultrakill.barrier'],
@@ -230,6 +205,7 @@ const addBarrier = ( scene, propData ) => {
     scene.add( barrier.positionGroup )
     return barrier.solidMesh
 }
+
 const addTree = ( scene, propData ) => {
     let tree = new PropGeneric( propData, {
         geometry: objectGeometry['ultrakill.tree'],
@@ -239,6 +215,7 @@ const addTree = ( scene, propData ) => {
     scene.add( tree.positionGroup )
     return tree.solidMesh
 }
+
 const addMelon = ( scene, propData ) => {
     let melon = new PropGeneric( propData, {
         geometry: new THREE.IcosahedronGeometry( 1, 1 ),
@@ -261,11 +238,13 @@ const drawSandboxBlocks = ( scene, blocks ) => {
         addBlock( scene, blockData )
     }
 }
+
 const drawSandboxProps = ( scene, props ) => {
     for ( let i=0; i<props.length; i++ ) {
         let propData = props[i]
 
-        mainLog.Info(`Found prop with type ${propData.ObjectIdentifier}`)
+        // turn back on if you need paranoid logging
+        Log_Main.Info(`Found prop with type ${propData.ObjectIdentifier}`)
         switch( propData.ObjectIdentifier ) {
             case "ultrakill.explosive-barrel":
             case "ultrakill.barrel":
@@ -285,7 +264,7 @@ const drawSandboxProps = ( scene, props ) => {
                 addMelon( scene, propData )
                 break
             default:
-                mainLog.Warn(`Unknown prop type ${propData.ObjectIdentifier} found. This object will not be included or be editable.`)
+                Log_Main.Warn(`No draw func is defined for prop type ${propData.ObjectIdentifier}. This object will not be included or be editable.`)
                 break
         }
     }
@@ -317,7 +296,7 @@ const reloadScene = ( scene ) => {
     EditingObject.selected = false
     EditingObject.hovered = false
 
-    disableGUI()
+    ObjGui.disableGUI()
     disableFreeTransform()
 
     drawSandboxBlocks(scene, Sandbox.getBlocks())
@@ -399,7 +378,7 @@ document.addEventListener('keydown', e => {
 
             disableFreeTransform()
 
-            disableGUI()
+            ObjGui.disableGUI()
         }
 
         if ( e.code === 'Delete' ) {
@@ -408,7 +387,7 @@ document.addEventListener('keydown', e => {
 
                 EditingObject.selected = false
 
-                disableGUI()
+                ObjGui.disableGUI()
             }
         }
 
@@ -506,6 +485,7 @@ const enableTransformSnapping = () => {
     FreeTransform.control.translationSnap = 0.5
     FreeTransform.control.setScaleSnap(0.25)
 }
+
 const disableTransformSnapping = () => {
     FreeTransform.control.rotationSnap = null
     FreeTransform.control.translationSnap = null
@@ -529,7 +509,7 @@ const handleFreeTranslate = ( obj, redrawing = false ) => {
     FreeTransform.control.setMode('translate')
     FreeTransform.control.addEventListener('mouseUp', e => {        
         updateObjectPosition( obj, { x: group.position.x, y: group.position.y, z: group.position.z } )
-        updateObjectGUI( obj )
+        ObjGui.updateGUI( obj )
     })
 
     FreeTransform.redraw = () => handleFreeTranslate( EditingObject.selected, true )
@@ -555,7 +535,7 @@ const handleFreeRotate = ( obj, redrawing = false ) => {
     FreeTransform.control.setMode('rotate')
     FreeTransform.control.addEventListener('mouseUp', e => {        
         updateObjectRotation( obj, { x: group.rotation.x, y: group.rotation.y, z: group.rotation.z } )
-        updateObjectGUI( obj )
+        ObjGui.updateGUI( obj )
     })
 
     FreeTransform.redraw = () => handleFreeRotate( EditingObject.selected, true )
@@ -581,7 +561,7 @@ const handleFreeScale = ( obj, redrawing = false ) => {
     FreeTransform.control.setMode('scale')
     FreeTransform.control.addEventListener('mouseUp', e => {        
         updateObjectScaleAll( obj, { x: group.scale.x, y: group.scale.y, z: group.scale.z } )
-        updateObjectGUI( obj )
+        ObjGui.updateGUI( obj )
     })
 
     FreeTransform.redraw = () => handleFreeScale( EditingObject.selected, true )
@@ -674,9 +654,9 @@ const handleMouseDown = ( e ) => {
         updateSelectedObject()
 
         if (EditingObject.selected) {
-            updateGUI( EditingObject.selected )
+            ObjGui.updateGUI( EditingObject.selected )
         } else {
-            disableGUI()
+            ObjGui.disableGUI()
         }
     }
 }
@@ -764,7 +744,7 @@ const updateObjectRotation = ( obj, rotation ) => {
     if ( !obj ) return
 
     let data = getObjectData( obj )
-    let unityQuaternion = convertToUnityQuaternion( rotation.x, rotation.y, rotation.z )
+    let unityQuaternion = MathEx.toUnityQuaternion( rotation.x, rotation.y, rotation.z )
 
     data.Rotation.x = unityQuaternion.x
     data.Rotation.y = unityQuaternion.y
@@ -1004,107 +984,15 @@ const handleToggleInput = (input) => {
 
 const GUI = {}
 
-const updateGUI = ( obj ) => {
-    let guiElements = document.querySelectorAll('.object_data_container')
-    for (let el of guiElements) {
-        el.classList.add('hidden')
-    }
+const ObjGui = new ObjectGui();
 
-    switch (obj.userData.objectType) {
-        case 'block':
-            updateObjectGUI( obj )
-            break
-        case 'prop':
-            updateObjectGUI( obj )
-            break
-        default:
-            return 'unknown object type'
-    }
-}
-
-// disabled 
-GUI.disabled = {}
-GUI.disabled.element = document.getElementById('disabled_data')
-
-const disableGUI = () => {
-    let guiElements = document.querySelectorAll('.object_data_container')
-    for (let el of guiElements) {
-        el.classList.add('hidden')
-    }
-    
-    GUI.disabled.element.classList.remove('hidden')
-}
-
-// block
-GUI.object = {}
-GUI.object.element = document.getElementById('block_data')
-
-const toDegrees = ( rad ) => {
-    return rad * 180/Math.PI
-}
-const toRadians = ( rad ) => {
-    return rad * Math.PI/180
-}
-
-const updateObjectGUI = ( obj ) => {
-    let data = obj.userData.objectData
-
-    if ( !data ) return
-
-    let scale = obj.userData.objectType === 'block' ? data.BlockSize : data.Scale
-
-    GUI.object.element.classList.remove('hidden')
-
-    GUI.object.element.querySelector('#block_type').innerText = jsondata.names[ data.ObjectIdentifier ]
-
-    let posInputs = Array.from( GUI.object.element.querySelectorAll('#position input') )
-    posInputs[0].value = data.Position.x
-    posInputs[1].value = data.Position.y
-    posInputs[2].value = data.Position.z
-
-    let scaleInputs = Array.from( GUI.object.element.querySelectorAll('#scale input') )
-    scaleInputs[0].value = scale.x
-    scaleInputs[1].value = scale.y
-    scaleInputs[2].value = scale.z
-
-    let rotationInputs = Array.from( GUI.object.element.querySelectorAll('.rotation') )
-
-    let eulerRotation = convertFromUnityQuaternion( data.Rotation.x, data.Rotation.y, data.Rotation.z, data.Rotation.w )
-
-    rotationInputs[0].value = toDegrees(eulerRotation.x)
-    rotationInputs[1].value = toDegrees(eulerRotation.y)
-    rotationInputs[2].value = toDegrees(eulerRotation.z)
-
-    let frozenInput = GUI.object.element.querySelector('#block_frozen')
-    frozenInput.checked = data.Kinematic
-
-    let weakInput = GUI.object.weakToggle
-    let unbreakableInput = GUI.object.unbreakableToggle
-
-    if ( data.Data ) {
-        weakInput.disabled = false
-        weakInput.checked = data.Data[0].Options[0].BoolValue
-
-        unbreakableInput.disabled = false
-        unbreakableInput.checked = data.Data[0].Options[1].BoolValue
-    } else {
-        weakInput.disabled = true
-        weakInput.checked = false
-
-        unbreakableInput.disabled = true
-        unbreakableInput.checked = false
-    }
-}
-
-GUI.object.numberInputs = GUI.object.element.querySelectorAll('input[type="number"]')
-for (let input of GUI.object.numberInputs) {
+for (let input of ObjGui.object.numberInputs) {
     if ( !input.classList.contains('auto_exclude') ) {
         handleNumberInput( input )
     }
 }
 
-GUI.object.scaleInputs = GUI.object.element.querySelectorAll('.scale')
-for (let input of GUI.object.scaleInputs) {
+for (let input of ObjGui.object.scaleInputs) {
     input.addEventListener('input', e => {
         updateObjectScale( EditingObject.selected, input.dataset.property, parseFloat(input.value) )
     })
@@ -1124,16 +1012,11 @@ for (let input of GUI.object.scaleInputs) {
     })
 }
 
-GUI.object.rotationInputs = GUI.object.element.querySelectorAll('.rotation')
-GUI.object.rotationX = GUI.object.element.querySelector('#rotation_x')
-GUI.object.rotationY = GUI.object.element.querySelector('#rotation_y')
-GUI.object.rotationZ = GUI.object.element.querySelector('#rotation_z')
-
-for (let input of GUI.object.rotationInputs) {
+for (let input of ObjGui.object.rotationInputs) {
     input.addEventListener('input', e => {
-        let x = toRadians(parseFloat(GUI.object.rotationX.value))
-        let y = toRadians(parseFloat(GUI.object.rotationY.value))
-        let z = toRadians(parseFloat(GUI.object.rotationZ.value))
+        let x = MathEx.toRadians(parseFloat(ObjGui.object.rotationX.value))
+        let y = MathEx.toRadians(parseFloat(ObjGui.object.rotationY.value))
+        let z = MathEx.toRadians(parseFloat(ObjGui.object.rotationZ.value))
 
         if (EditingObject.selected) {
             updateObjectRotation( EditingObject.selected, { x: x, y: y, z: z } )
@@ -1150,86 +1033,19 @@ for (let input of GUI.object.rotationInputs) {
     })
 }
 
-GUI.object.toggleInputs = GUI.object.element.querySelectorAll('input[type="checkbox"]')
-for (let input of GUI.object.toggleInputs) {
+for (let input of ObjGui.object.toggleInputs) {
     if ( !input.classList.contains('auto_exclude') ) {
         handleToggleInput( input )
     }
 }
 
-GUI.object.weakToggle = GUI.object.element.querySelector('#block_weak')
-GUI.object.weakToggle.addEventListener('change', e => {
+ObjGui.object.weakToggle.addEventListener('change', e => {
     if (EditingObject.selected) updateObjectWeak( EditingObject.selected, GUI.object.weakToggle.checked )
 })
 
-GUI.object.unbreakableToggle = GUI.object.element.querySelector('#block_unbreakable')
-GUI.object.unbreakableToggle.addEventListener('change', e => {
+ObjGui.object.unbreakableToggle.addEventListener('change', e => {
     if (EditingObject.selected) updateObjectUnbreakable( EditingObject.selected, GUI.object.unbreakableToggle.checked )
 })
-
-// prop (i think this is basically the exact same setup as the block gui oops)
-// GUI.prop = {}
-// GUI.prop.element = document.getElementById('prop_data')
-
-// const updatePropGUI = ( data ) => {
-//     if (!data) return
-
-//     GUI.prop.element.classList.remove('hidden')
-
-//     GUI.prop.element.querySelector('#prop_type').innerText = data.ObjectIdentifier
-
-//     let posInputs = Array.from( GUI.prop.element.querySelectorAll('#position input') )
-//     posInputs[0].value = data.Position.x
-//     posInputs[1].value = data.Position.y
-//     posInputs[2].value = data.Position.z
-
-//     let scaleInputs = Array.from( GUI.prop.element.querySelectorAll('#scale input') )
-//     scaleInputs[0].value = data.Scale.x
-//     scaleInputs[1].value = data.Scale.y
-//     scaleInputs[2].value = data.Scale.z
-
-//     let frozenInput = GUI.prop.element.querySelector('#prop_frozen')
-//     frozenInput.checked = data.Kinematic
-
-//     let weakInput = GUI.prop.weakToggle
-//     let unbreakableInput = GUI.prop.unbreakableToggle
-
-//     if ( data.Data ) {
-//         weakInput.disabled = false
-//         weakInput.checked = data.Data[0].Options[0].BoolValue
-
-//         unbreakableInput.disabled = false
-//         unbreakableInput.checked = data.Data[0].Options[1].BoolValue
-//     } else {
-//         weakInput.disabled = true
-//         weakInput.checked = false
-
-//         unbreakableInput.disabled = true
-//         unbreakableInput.checked = false
-//     }
-// }
-
-// GUI.prop.numberInputs = GUI.prop.element.querySelectorAll('input[type="number"]')
-// for (let input of GUI.prop.numberInputs) {
-//     if ( !input.classList.contains('auto_exclude') ) {
-//         handleNumberInput( input )
-//     }
-// }
-
-// GUI.prop.toggleInputs = GUI.prop.element.querySelectorAll('input[type="checkbox"]')
-// for (let input of GUI.prop.toggleInputs) {
-//     handleToggleInput( input )
-// }
-
-// GUI.prop.weakToggle = GUI.prop.element.querySelector('#prop_weak')
-// GUI.prop.weakToggle.addEventListener('change', e => {
-//     if (EditingObject.selected) updateObjectWeak( EditingObject.selected, GUI.prop.weakToggle.checked )
-// })
-
-// GUI.prop.unbreakableToggle = GUI.prop.element.querySelector('#prop_unbreakable')
-// GUI.prop.unbreakableToggle.addEventListener('change', e => {
-//     if (EditingObject.selected) updateObjectUnbreakable( EditingObject.selected, GUI.prop.unbreakableToggle.checked )
-// })
 
 GUI.deleteElements = document.querySelectorAll('.delete_selected_object')
 for (let el of GUI.deleteElements) {
@@ -1238,7 +1054,7 @@ for (let el of GUI.deleteElements) {
             deleteObject( EditingObject.selected )
 
             EditingObject.selected = false
-            disableGUI()
+            ObjGui.disableGUI()
         }        
     })
 }
@@ -1387,7 +1203,12 @@ class InfiniteGridHelper extends THREE.Mesh {
 }
 
 const init = () => {
-    scene = new THREE.Scene()
+    Log_Main.Info("Creating Scene")
+    try {
+        scene = new THREE.Scene()
+    } catch(ex) {
+        Log_Main.Error(`Failed to create scene: ${ex.message}`)
+    }
     camera = new THREE.PerspectiveCamera( 75, window.innerWidth/window.innerHeight, 0.1, 1000 )
 
     addLights( scene )
@@ -1416,6 +1237,8 @@ const init = () => {
     renderer.domElement.addEventListener('mousedown', handleMouseDown, false)
     
     window.addEventListener( 'resize', resize )
+
+    AddMenu.updateLists()
 
     update()
 }
@@ -1451,6 +1274,7 @@ const objectGeometry = {}
 
 const loadAsyncWithModelName = ( url ) => {
     return new Promise( resolve => {
+        Log_FS.Info(`Loading file '${url}'`)
         loader.load( url, obj => {
             let name = url.split('/')[2].split('.')[0]
             resolve( {model: obj, name: name} )

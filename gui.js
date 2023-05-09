@@ -6,6 +6,16 @@ function RegisterOverlayPanel(name) {
   };
 }
 
+function IsOverlayVisible(panelid) {
+  let panel = document.getElementById(`${panelid}-panel`);
+
+  if (panel.classList.contains('uk-panel-open')) {
+    return true;
+  } else if (panel.classList.contains('uk-panel-close')) {
+    return false;
+  }
+}
+
 function SetOverlayVisible(visible, panelid) {
   let overlay = document.getElementById(`${panelid}-panel-container`);
   let panel = document.getElementById(`${panelid}-panel`);
