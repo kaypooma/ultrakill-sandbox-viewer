@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { MathEx } from './mathex';
-import { Logger } from './logger';
+import MathEx from './mathex';
+import Logger from './logger';
 
 import materials from './data/materials.json';
 
@@ -43,7 +43,7 @@ const PropGeneric = class PropGeneric {
     if (block) {
       this.scaleGroup.scale.set( propData.BlockSize.x, propData.BlockSize.y, propData.BlockSize.z );
     } else {
-      this.scaleGroup.scale.set( propData.Scale.x, propData.Scale.y, propData.Scale.z );     
+      this.scaleGroup.scale.set( propData.Scale.x, propData.Scale.y, propData.Scale.z );
     }
 
     // position/rotation group
@@ -61,4 +61,4 @@ const PropGeneric = class PropGeneric {
   }
 }
 
-export { PropGeneric };
+export default PropGeneric;

@@ -1,6 +1,6 @@
 import names from './data/names.json';
-import { Logger } from './logger';
-import { MathEx } from './mathex';
+import Logger from './logger';
+import MathEx from './mathex';
 
 const Log_OBJUI = new Logger("ObjectGui");
 
@@ -13,7 +13,7 @@ const ObjectGui = class ObjectGui {
     this.disabled = {
       'element': document.getElementById('disabled_data'),
     };
-    
+
     this.object = {
       'element': document.getElementById('block_data'),
     }
@@ -22,7 +22,7 @@ const ObjectGui = class ObjectGui {
     this.object.blockInfo = this.object.element.querySelector("#block_type");
 
     this.object.numberInputs = this.object.element.querySelectorAll('input[type="number"]');
-    
+
     this.object.positionX = this.object.element.querySelector('.position_x');
     this.object.positionY = this.object.element.querySelector('.position_y');
     this.object.positionZ = this.object.element.querySelector('.position_z');
@@ -36,7 +36,7 @@ const ObjectGui = class ObjectGui {
     this.object.rotationX = this.object.element.querySelector('#rotation_x');
     this.object.rotationY = this.object.element.querySelector('#rotation_y');
     this.object.rotationZ = this.object.element.querySelector('#rotation_z');
-    
+
     this.object.toggleInputs = this.object.element.querySelectorAll('input[type="checkbox"]');
     this.object.frozenToggle = this.object.element.querySelector('#block_frozen');
     this.object.weakToggle = this.object.element.querySelector('#block_weak');
@@ -73,7 +73,7 @@ const ObjectGui = class ObjectGui {
 
   updateObjectGUI() {
     let data = this.curObj.userData.objectData;
-    
+
     if (!data) {
       Log_OBJUI.Error("curObj does not contain valid objectData");
       return;
@@ -82,7 +82,7 @@ const ObjectGui = class ObjectGui {
     let scale = this.curObj.userData.objectType === 'block' ? data.BlockSize : data.Scale;
 
     this.object.element.classList.remove('hidden');
-    
+
     this.object.blockInfo.innerText = names[data.ObjectIdentifier];
 
     this.object.positionX.value = data.Position.x;
@@ -100,11 +100,11 @@ const ObjectGui = class ObjectGui {
     this.object.rotationZ.value = eulerRotation.z;
 
     this.object.frozenToggle.checked = data.Kinematic;
-    
+
     if (data.Data) {
       this.object.weakToggle.disabled = false;
       this.object.weakToggle.checked = data.Data[0].Options[0].BoolValue;
-      
+
       this.object.unbreakableToggle.disabled = false;
       this.object.unbreakableToggle.checked = data.Data[0].Options[1].BoolValue;
     } else {
@@ -117,4 +117,4 @@ const ObjectGui = class ObjectGui {
   }
 }
 
-export { ObjectGui };
+export default ObjectGui;

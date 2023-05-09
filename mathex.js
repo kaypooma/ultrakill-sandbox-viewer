@@ -12,7 +12,7 @@ const MathEx = class MathEx {
   // unity quaternion ->       x, y, z,  w
   // to threejs quaternion -> -x, y, z, -w
   // to euler
-  // 
+  //
 
   static fromUnityQuaternion( x, y, z, w ) {
     let quaternion = new THREE.Quaternion( -x, y, z, -w );
@@ -41,4 +41,4 @@ const MathEx = class MathEx {
   }
 }
 
-export { MathEx };
+export default MathEx;
