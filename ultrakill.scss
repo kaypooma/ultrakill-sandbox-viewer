@@ -213,6 +213,10 @@ button, .uk-button {
   display: block;
 }
 
+.container input:disabled ~ .checkmark {
+  border: 4px solid rgb(155, 155, 155);
+}
+
 /* Style the checkmark/indicator */
 .container .checkmark:after {
   left: 3px;
