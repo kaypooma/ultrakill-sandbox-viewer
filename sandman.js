@@ -7,6 +7,7 @@ const Log_SMan = new Logger("SandboxManager");
 const SandboxManager = class SandboxManager {
     map;
 
+    saveInfo;
     blocks = [];
     props = [];
     enemies = [];
@@ -16,43 +17,48 @@ const SandboxManager = class SandboxManager {
     }
 
     loadMap(map) {
+        this.map = {};
+        this.saveInfo = null;
+        this.blocks = [];
+        this.props = [];
+        this.enemies = [];
+
         Log_SMan.Info("Parsing save data");
         this.map = map;
 
-        for (var prop of this.map.Props) {
-            let sboxobj = new SandboxObject(prop);
+        // log the map info and save version info
+        this.saveInfo = {
+            'MapName': map.MapName,
+            'MapIdentifier': map.MapIdentifier,
+            'SaveVersion': map.SaveVersion,
+            'GameVersion': map.GameVersion
+        };
+
+        Log_SMan.Info(`Map: ${map.MapName}`);
+        Log_SMan.Info(`Save Version: ${map.SaveVersion}, Game Version: ${map.GameVersion}`);
+
+        for (var blockData of this.map.Blocks) {
+            let sboxobj = new SandboxObject(blockData, 'block');
+            this.blocks.push(sboxobj);
+        }
+
+        for (var propData of this.map.Props) {
+            let sboxobj = new SandboxObject(propData, 'prop');
+            this.props.push(sboxobj);
         }
     }
 
     getBlocks() {
-        return this.map.Blocks;
+        return this.blocks;
     }
     getProps() {
-        return this.map.Props;
+        return this.props;
     }
 
-    addObject( type, data ) {
-        Log_SMan.Info("Adding object");
-
-        let nmap = {
-            'block': 'Blocks',
-            'prop': 'Props',
-            'enemy': 'Enemies'
-        };
-
-        if (nmap[type] == null) {
-            Log_SMan.Error(`Type ${type} is not a valid object type.`);
-            return;
-        }
-
-        let array = this.map[ nmap[type] ];
-
-        // TODO: we should probably verify the data is correct for this object type
-        
-        let newObj = new SandboxObject(null, data.ObjectIdentifier, type);
+    addObject( type, id ) {
+        Log_SMan.Info("Adding object");        
+        let newObj = new SandboxObject(null, type, id);
         this.props.push(newObj);
-
-        array.push(data);
     }
 
     updateObject( type, oldData, newData ) {
@@ -83,7 +89,25 @@ const SandboxManager = class SandboxManager {
     }
 
     getMapData() {
-        return JSON.stringify(this.map);
+        let mapData = {
+            'Blocks': [],
+            'Props': [],
+            'Enemeis': []
+        }
+        Object.assign(mapData, this.saveInfo);
+
+        // PITRify blocks
+        for (let block of this.blocks) {
+            mapData.Blocks.push(block.getPITRData());
+        }
+
+        // PITRify props
+        for (let prop of this.props) {
+            let PITRprop = prop.getPITRData();
+            mapData.Props.push(PITRprop);
+        }
+
+        return JSON.stringify(mapData);
     }
 }
 

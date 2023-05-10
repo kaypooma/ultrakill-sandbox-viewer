@@ -50,27 +50,30 @@ const SandboxObject = class SandboxObject {
 
     position = {'x': 0, 'y': 0, 'z': 0};
     rotation = {'x': 0, 'y': 0, 'z': 0, 'w': 0};
-    scale = {'x': 0, 'y': 0, 'z': 0};
+    scale = {'x': 1, 'y': 1, 'z': 1};
 
     frozen = false;
 
-    blockSize;
-
     /* JS doesn't support multiple constructors so I have to do this awfulness */
-    constructor(pitrdata, id = "", type = "") {
+    constructor(pitrdata, type, id = "") {
+        if (type != "block" && type != "enemy" && type != "prop") {
+            Log_SObj.Error(`${type} is not a valid object type!`);
+            throw new Error("SandboxObject.InvalidType");
+        }
+        this.type = type;
+
         if (pitrdata == null) {
-            this.newObjectData(id, type);
+            this.newObjectData(id);
         } else {
             this.fromPITRData(pitrdata);
         }
     }
 
     /* create a brand new SandboxObject of the specified type and id */
-    newObjectData(id, type) {
+    async newObjectData(id) {
         this.id = id;
-        this.type = type;
 
-        loadObjConfigAsync(id).then((config) => {
+        await loadObjConfigAsync(id).then((config) => {
             let objcfg = JSON.parse(config);
             
             for (let [key, options] of Object.entries(objcfg.Props)) {
@@ -87,13 +90,14 @@ const SandboxObject = class SandboxObject {
     fromPITRData(pitrdata) {
         this.id = pitrdata.ObjectIdentifier;
 
-        if (pitrdata.BlockSize) {
-            this.blockSize = pitrdata.BlockSize;
+        if (this.type == "block") {
+            this.scale = pitrdata.BlockSize;
+        } else {
+            this.scale = pitrdata.Scale;
         }
 
         this.position = pitrdata.Position;
         this.rotation = pitrdata.Rotation;
-        this.scale = pitrdata.Scale;
 
         // parse existing data
         if (pitrdata['Data']) {
@@ -107,12 +111,12 @@ const SandboxObject = class SandboxObject {
                     // fun
                     let valueKey;
                     for (var possibleValueKey of valueKeys) {
-                        if (prop[valueKey] != null) {
+                        if (prop[possibleValueKey] != null) {
                             valueKey = possibleValueKey;
                         }
                     }
 
-                    this.addProp(`${propGroup.Key}/${prop.Key}`, valueKey);
+                    this.addProp(`${propGroup.Key}/${prop.Key}`, valueKey, prop[valueKey]);
                 }
             }
         }
@@ -121,7 +125,7 @@ const SandboxObject = class SandboxObject {
     /* Property/Options */
 
     addPropGroup(key) {
-        Log_SObj.Info(`Added PropGroup ${key}`);
+        // Log_SObj.Info(`Added PropGroup ${key}`);
         this.props[key] = {}
     }
 
@@ -134,22 +138,30 @@ const SandboxObject = class SandboxObject {
     }
 
     addProp(keypath, type, defaultValue = null) {
-        Log_SObj.Info(`Added PropOption at path ${keypath}`);
+        // Log_SObj.Info(`Added PropOption at path ${keypath}`);
         let keys = keypath.split("/");
 
-        this.props[keys[0]][keys[1]] = {
-            'type': type,
-            'value': defaultValue
+        if (this.props[keys[0]]) {
+            this.props[keys[0]][keys[1]] = {
+                'type': type,
+                'value': defaultValue
+            }
+        } else {
+            Log_SObj.Error(`No PropertyGroup named ${keys[0]} exists`);
         }
     }
 
     getPropValue(keypath) {
         let keys = keypath.split("/");
 
-        if (this.props[keys[0]][keys[1]]) {
-            return this.props[keys[0]][keys[1]].value;
+        if (this.props[keys[0]]) {
+            if (this.props[keys[0]][keys[1]]) {
+                return this.props[keys[0]][keys[1]].value;
+            } else {
+                Log_SObj.Error(`No Property named ${keys[1]} exists in PropertyGroup ${keys[0]}`);
+            }
         } else {
-            Log_SObj.Error(`No property at ${keypath} was found`);
+            Log_SObj.Error(`No PropertyGroup named ${keys[0]} exists`)
         }
     }
 
@@ -163,7 +175,7 @@ const SandboxObject = class SandboxObject {
             }
             Log_SObj.Error(`Expected ${opt.type} got ${typeof value}`);
         } else {
-            Log_SObj.Error(`No property at ${keypath} was found`);
+            Log_SObj.Error(`No Property named ${keys[1]} was found in PropertyGroup ${keys[0]}`);
         }
     }
 
@@ -173,12 +185,14 @@ const SandboxObject = class SandboxObject {
             'ObjectIdentifier': this.id,
             'Position': this.position,
             'Rotation': this.rotation,
-            'Scale': this.scale
+            'Scale': this.scale,
         };
 
         /* extra specific top level data */
         if (this.type == "block") {
-            PITRData.BlockSize = this.blockSize;
+            PITRData.BlockType = 1; // TODO: Implement this properly!
+            PITRData.BlockSize = this.scale;
+            PITRData.Scale = {'x': 1, 'y': 1, 'z': 1};
         }
 
         /* property groups */

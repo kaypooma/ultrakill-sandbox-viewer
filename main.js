@@ -104,8 +104,8 @@ const createNewBlock = (id) => {
     };
 
     Log_Main.Info(`Creating new block of type ${id}`)
-    Sandbox.addObject('block', Block)
-    addBlock( scene, Block )
+    Sandbox.addObject('block', id)
+    reloadScene( scene );
 }
 
 const createNewProp = (id) => {
@@ -116,39 +116,9 @@ const createNewProp = (id) => {
     spawnPos.y = camera.position.y
     spawnPos.z = camera.position.z - 9
 
-    let Prop = {
-        'Kinematic': false,
-        'ObjectIdentifier': id,
-
-        'Position': spawnPos,
-        'Rotation': {'x': 0, 'y': 0, 'z': 0, 'w': 0},
-        'Scale': {'x': 1, 'y': 1, 'z': 1},
-
-        'Data': [
-            {
-                'Key': 'breakable',
-                'Options': [
-                    {
-                        'Key': 'weak',
-                        'BoolValue': false
-                    },
-                    {
-                        'Key': 'unbreakable',
-                        'BoolValue': false
-                    }
-                ]
-            }
-        ]
-    };
-
     Log_Main.Info(`Creating new prop of type ${id}`)
-    Sandbox.addObject('prop', Prop)
-    if (addProp[id] == null) {
-        Log_Main.Warn(`No draw func is defined for prop type ${id}. This object will not appear correctly.`)
-        addProp['unknown']( scene, Prop )
-    } else {
-        addProp[id]( scene, Prop )
-    }
+    Sandbox.addObject('prop', id)
+    reloadScene( scene )
 }
 
 AddMenu.addCallbacks = {
@@ -271,15 +241,15 @@ const drawSandboxBlocks = ( scene, blocks ) => {
 
 const drawSandboxProps = ( scene, props ) => {
     for ( let i=0; i<props.length; i++ ) {
-        let propData = props[i]
+        let prop = props[i]
 
         // turn back on if you need paranoid logging
-        Log_Main.Info(`Found prop with type ${propData.ObjectIdentifier}`)
-        if (addProp[propData.ObjectIdentifier] == null) {
-            Log_Main.Warn(`No draw func is defined for prop type ${propData.ObjectIdentifier}. This object will not appear correctly.`)
-            addProp['unknown']( scene, propData )
+        Log_Main.Info(`Found prop with type ${prop.id}`)
+        if (addProp[prop.id] == null) {
+            Log_Main.Warn(`No draw func is defined for prop type ${prop.id}. This object will not appear correctly.`)
+            addProp['unknown']( scene, prop )
         } else {
-            addProp[propData.ObjectIdentifier]( scene, propData )
+            addProp[prop.id]( scene, prop )
         }
     }
 }
@@ -725,7 +695,7 @@ const updateObjectScale = ( obj, axis, value ) => {
     if ( !obj ) return
 
     let data = getObjectData( obj )
-    let property = obj.userData.objectType === 'block' ? 'BlockSize' : 'Scale'
+    let property = 'scale'
 
     data[property][axis] = value
 
@@ -735,7 +705,7 @@ const updateObjectScaleAll = ( obj, scale ) => {
     if ( !obj ) return
 
     let data = getObjectData( obj )
-    let property = obj.userData.objectType === 'block' ? 'BlockSize' : 'Scale'
+    let property = 'scale'
 
     data[property].x = scale.x
     data[property].y = scale.y
@@ -748,9 +718,9 @@ const updateObjectPosition = ( obj, position ) => {
 
     let data = getObjectData( obj )
 
-    data.Position.x = -position.x
-    data.Position.y = position.y
-    data.Position.z = position.z
+    data.position.x = -position.x
+    data.position.y = position.y
+    data.position.z = position.z
 
     redrawObject( obj, data )
 }
@@ -760,10 +730,10 @@ const updateObjectRotation = ( obj, rotation ) => {
     let data = getObjectData( obj )
     let unityQuaternion = MathEx.toUnityQuaternion( rotation.x, rotation.y, rotation.z )
 
-    data.Rotation.x = unityQuaternion.x
-    data.Rotation.y = unityQuaternion.y
-    data.Rotation.z = unityQuaternion.z
-    data.Rotation.w = unityQuaternion.w
+    data.rotation.x = unityQuaternion.x
+    data.rotation.y = unityQuaternion.y
+    data.rotation.z = unityQuaternion.z
+    data.rotation.w = unityQuaternion.w
 
     redrawObject( obj, data )
     // console.log( obj.userData.objectData.Rotation, unityQuaternion )
@@ -973,14 +943,14 @@ const handleNumberInput = (input) => {
             disableFreeTransform()
         })
     }
-    if ( input.dataset.property.indexOf('Scale') !== -1 || input.dataset.property.indexOf('BlockSize') !== -1 ) {
+    if ( input.dataset.property.indexOf('scale') !== -1 ) {
         input.addEventListener('focus', e => {
             drawScalingAxisDisplay( EditingObject.selected, input.dataset.property.split('.')[1] )
         })
     }
 
     input.addEventListener('blur', e => {
-        if ( input.dataset.property.indexOf('Scale') !== -1 || input.dataset.property.indexOf('BlockSize') !== -1 ) {
+        if ( input.dataset.property.indexOf('scale') !== -1 ) {
             if ( parseFloat(input.value) === 0 || parseFloat(input.value) === -0 ) { // negative zero yeah
                 input.value = 0.001
                 if (EditingObject.selected) updateObjectProperty( EditingObject.selected, input.dataset.property, parseFloat(input.value) )

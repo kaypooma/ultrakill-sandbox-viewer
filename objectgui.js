@@ -79,34 +79,32 @@ const ObjectGui = class ObjectGui {
       return;
     }
 
-    let scale = this.curObj.userData.objectType === 'block' ? data.BlockSize : data.Scale;
-
     this.object.element.classList.remove('hidden');
 
-    this.object.blockInfo.innerText = names[data.ObjectIdentifier];
+    this.object.blockInfo.innerText = names[data.id];
 
-    this.object.positionX.value = data.Position.x;
-    this.object.positionY.value = data.Position.y;
-    this.object.positionZ.value = data.Position.z;
+    this.object.positionX.value = data.position.x;
+    this.object.positionY.value = data.position.y;
+    this.object.positionZ.value = data.position.z;
 
-    this.object.scaleX.value = scale.x;
-    this.object.scaleY.value = scale.y;
-    this.object.scaleZ.value = scale.z;
+    this.object.scaleX.value = data.scale.x;
+    this.object.scaleY.value = data.scale.y;
+    this.object.scaleZ.value = data.scale.z;
 
-    let eulerRotation = MathEx.fromUnityQuaternion(data.Rotation.x, data.Rotation.y, data.Rotation.z, data.Rotation.w);
+    let eulerRotation = MathEx.fromUnityQuaternion(data.rotation.x, data.rotation.y, data.rotation.z, data.rotation.w);
 
     this.object.rotationX.value = eulerRotation.x;
     this.object.rotationY.value = eulerRotation.y;
     this.object.rotationZ.value = eulerRotation.z;
 
-    this.object.frozenToggle.checked = data.Kinematic;
+    this.object.frozenToggle.checked = data.frozen;
 
-    if (data.Data) {
+    if (data.getPropGroups().includes("breakable")) {
       this.object.weakToggle.disabled = false;
-      this.object.weakToggle.checked = data.Data[0].Options[0].BoolValue;
+      this.object.weakToggle.checked = data.getPropValue("breakable/weak");
 
       this.object.unbreakableToggle.disabled = false;
-      this.object.unbreakableToggle.checked = data.Data[0].Options[1].BoolValue;
+      this.object.unbreakableToggle.checked = data.getPropValue("breakable/unbreakable");
     } else {
       this.object.weakToggle.disabled = true;
       this.object.weakToggle.checked = false;

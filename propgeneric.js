@@ -18,15 +18,15 @@ const PropGeneric = class PropGeneric {
   scaleGroup = new THREE.Group();
   positionGroup = new THREE.Group();
 
-  constructor( propData, options, block ) {
+  constructor( prop, options, block ) {
     this.geometry = options.geometry;
 
     // material setup
-		let mat = materials[ propData.ObjectIdentifier ];
+		let mat = materials[ prop.id ];
 		if (mat != null) {
 		  mat.color = Number(mat.color);
 	  } else {
-	    Log_Prop.Warn(`No material found for ${propData.ObjectIdentifier}. Object may not appear correctly.`);
+	    Log_Prop.Warn(`No material found for ${prop.id}. Object may not appear correctly.`);
     }
 
     this.solidMaterial = new THREE.MeshLambertMaterial( mat ) || new THREE.MeshLambertMaterial({ color: 0xff00ff });
@@ -40,20 +40,16 @@ const PropGeneric = class PropGeneric {
     this.scaleGroup.add( this.solidMesh );
     this.scaleGroup.add( this.frameMesh );
 
-    if (block) {
-      this.scaleGroup.scale.set( propData.BlockSize.x, propData.BlockSize.y, propData.BlockSize.z );
-    } else {
-      this.scaleGroup.scale.set( propData.Scale.x, propData.Scale.y, propData.Scale.z );
-    }
+    this.scaleGroup.scale.set( prop.scale.x, prop.scale.y, prop.scale.z );
 
     // position/rotation group
     this.positionGroup.add( this.scaleGroup )
 
-    this.positionGroup.position.set( -propData.Position.x, propData.Position.y, propData.Position.z );
-    this.positionGroup.rotation.copy( MathEx.fromUnityQuaternion( propData.Rotation.x, propData.Rotation.y, propData.Rotation.z, propData.Rotation.w ) );
+    this.positionGroup.position.set( -prop.position.x, prop.position.y, prop.position.z );
+    this.positionGroup.rotation.copy( MathEx.fromUnityQuaternion( prop.rotation.x, prop.rotation.y, prop.rotation.z, prop.rotation.w ) );
 
     // userdata setup
-    this.solidMesh.userData.objectData = propData;
+    this.solidMesh.userData.objectData = prop;
     this.solidMesh.userData.objectType = block ? 'block' : 'prop';
     this.solidMesh.userData.parentGroup = this.positionGroup;
     this.solidMesh.userData.scaleGroup = this.scaleGroup;
