@@ -144,7 +144,8 @@ const createNewProp = (id) => {
     Log_Main.Info(`Creating new prop of type ${id}`)
     Sandbox.addObject('prop', Prop)
     if (addProp[id] == null) {
-        Log_Main.Warn(`No draw func is defined for prop type ${id}. This object will not be included or be editable.`)
+        Log_Main.Warn(`No draw func is defined for prop type ${id}. This object will not appear correctly.`)
+        addProp['unknown']( scene, Prop )
     } else {
         addProp[id]( scene, Prop )
     }
@@ -170,6 +171,16 @@ const addBlock = ( scene, blockData ) => {
 }
 
 const addProp = {}
+
+addProp['unknown'] = ( scene, propData ) => {
+    let prop = new PropGeneric( propData, {
+        geometry: objectGeometry['uksandbox.missing'],
+        drawFunc: addProp['unknown']
+    })
+
+    scene.add( prop.positionGroup )
+    return prop.solidMesh
+}
 
 addProp['ultrakill.ramp'] = ( scene, propData ) => {
     let shape = new THREE.Shape()
@@ -265,7 +276,8 @@ const drawSandboxProps = ( scene, props ) => {
         // turn back on if you need paranoid logging
         Log_Main.Info(`Found prop with type ${propData.ObjectIdentifier}`)
         if (addProp[propData.ObjectIdentifier] == null) {
-            Log_Main.Warn(`No draw func is defined for prop type ${propData.ObjectIdentifier}. This object will not be included or be editable.`)
+            Log_Main.Warn(`No draw func is defined for prop type ${propData.ObjectIdentifier}. This object will not appear correctly.`)
+            addProp['unknown']( scene, propData )
         } else {
             addProp[propData.ObjectIdentifier]( scene, propData )
         }
@@ -1283,6 +1295,10 @@ const loadAsyncWithModelName = ( url ) => {
         })
     })
 }
+
+loadAsyncWithModelName('assets/models/missing.obj').then((model) => {
+    objectGeometry[ `uksandbox.missing` ] = model.model.children[0].geometry
+})
 
 Promise.all( modelsToLoad.map( x => loadAsyncWithModelName(x) ) ).then( models => {
     for ( let model of models ) {

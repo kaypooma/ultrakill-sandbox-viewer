@@ -29,8 +29,14 @@ const loadObjConfigAsync = ( id ) => {
     return new Promise( resolve => {
         Log_SObj.Info(`Loading config file for Object '${id}'`);
         let url = `config/objects/${id}.json`;
-        loader.load( url, obj => {
-            resolve( obj );
+        loader.load( url, cfg => {
+            resolve( cfg );
+        }, 
+
+        (xhr) => {}, 
+
+        (err) => {
+            Log_SObj.Warn(`No object config was found for type ${id}. Was a new object added to the game?`);
         });
     });
 }
@@ -42,25 +48,52 @@ const SandboxObject = class SandboxObject {
     type;
     props = {};
 
-    position;
-    rotation;
-    scale;
+    position = {'x': 0, 'y': 0, 'z': 0};
+    rotation = {'x': 0, 'y': 0, 'z': 0, 'w': 0};
+    scale = {'x': 0, 'y': 0, 'z': 0};
+
+    frozen = false;
 
     blockSize;
 
-    /* create a brand new SandboxObject of the specified type and id */
-    // constructor(id, type) {
-    //     this.id = id;
-    //     this.type = type;
+    /* JS doesn't support multiple constructors so I have to do this awfulness */
+    constructor(pitrdata, id = "", type = "") {
+        if (pitrdata == null) {
+            this.newObjectData(id, type);
+        } else {
+            this.fromPITRData(pitrdata);
+        }
+    }
 
-    //     loadObjConfigAsync(id).then((config) => {
-    //         Log_SObj.Info("Received config file!");
-    //     });
-    // }
+    /* create a brand new SandboxObject of the specified type and id */
+    newObjectData(id, type) {
+        this.id = id;
+        this.type = type;
+
+        loadObjConfigAsync(id).then((config) => {
+            let objcfg = JSON.parse(config);
+            
+            for (let [key, options] of Object.entries(objcfg.Props)) {
+                this.addPropGroup(key);
+
+                for (let [opt_key, opt_info] of Object.entries(options)) {
+                    this.addProp(`${key}/${opt_key}`, opt_info.type, opt_info.defaultValue);
+                }
+            }
+        });
+    }
 
     /* construct a SandboxObject from existing data (i.e. a save file) */
-    constructor(pitrdata) {
+    fromPITRData(pitrdata) {
         this.id = pitrdata.ObjectIdentifier;
+
+        if (pitrdata.BlockSize) {
+            this.blockSize = pitrdata.BlockSize;
+        }
+
+        this.position = pitrdata.Position;
+        this.rotation = pitrdata.Rotation;
+        this.scale = pitrdata.Scale;
 
         // parse existing data
         if (pitrdata['Data']) {
@@ -84,6 +117,8 @@ const SandboxObject = class SandboxObject {
             }
         }
     }
+
+    /* Property/Options */
 
     addPropGroup(key) {
         Log_SObj.Info(`Added PropGroup ${key}`);

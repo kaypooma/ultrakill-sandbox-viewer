@@ -48,6 +48,10 @@ const SandboxManager = class SandboxManager {
         let array = this.map[ nmap[type] ];
 
         // TODO: we should probably verify the data is correct for this object type
+        
+        let newObj = new SandboxObject(null, data.ObjectIdentifier, type);
+        this.props.push(newObj);
+
         array.push(data);
     }
 

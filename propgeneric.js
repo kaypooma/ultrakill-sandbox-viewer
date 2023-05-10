@@ -26,7 +26,7 @@ const PropGeneric = class PropGeneric {
 		if (mat != null) {
 		  mat.color = Number(mat.color);
 	  } else {
-	    Log_Prop.Warning(`No material found for ${propData.ObjectIdentifier}. Object may not appear correctly.`);
+	    Log_Prop.Warn(`No material found for ${propData.ObjectIdentifier}. Object may not appear correctly.`);
     }
 
     this.solidMaterial = new THREE.MeshLambertMaterial( mat ) || new THREE.MeshLambertMaterial({ color: 0xff00ff });
