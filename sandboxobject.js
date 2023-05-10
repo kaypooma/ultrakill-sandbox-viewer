@@ -31,9 +31,9 @@ const loadObjConfigAsync = ( id ) => {
         let url = `config/objects/${id}.json`;
         loader.load( url, cfg => {
             resolve( cfg );
-        }, 
+        },
 
-        (xhr) => {}, 
+        (xhr) => {},
 
         (err) => {
             Log_SObj.Warn(`No object config was found for type ${id}. Was a new object added to the game?`);
@@ -53,6 +53,7 @@ const SandboxObject = class SandboxObject {
     scale = {'x': 1, 'y': 1, 'z': 1};
 
     frozen = false;
+    blockType; // only has a value if we're a block
 
     /* JS doesn't support multiple constructors so I have to do this awfulness */
     constructor(pitrdata, type, id = "") {
@@ -75,7 +76,11 @@ const SandboxObject = class SandboxObject {
 
         await loadObjConfigAsync(id).then((config) => {
             let objcfg = JSON.parse(config);
-            
+
+            if (this.type == "block") {
+                this.blockType = objcfg.BlockType;
+            }
+
             for (let [key, options] of Object.entries(objcfg.Props)) {
                 this.addPropGroup(key);
 
@@ -84,6 +89,11 @@ const SandboxObject = class SandboxObject {
                 }
             }
         });
+
+        // set some defaults
+        if (this.type == "block") {
+            this.frozen = true;
+        }
     }
 
     /* construct a SandboxObject from existing data (i.e. a save file) */
@@ -190,7 +200,7 @@ const SandboxObject = class SandboxObject {
 
         /* extra specific top level data */
         if (this.type == "block") {
-            PITRData.BlockType = 1; // TODO: Implement this properly!
+            PITRData.BlockType = this.blockType;
             PITRData.BlockSize = this.scale;
             PITRData.Scale = {'x': 1, 'y': 1, 'z': 1};
         }

@@ -1,0 +1,9 @@
+{
+    "BlockType": 1,
+    "Props": {
+        "breakable": {
+            "weak": {"type": "BoolValue", "defaultValue": false},
+            "unbreakable": {"type": "BoolValue", "defaultValue": false}
+        }
+    }
+}

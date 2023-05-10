@@ -56,9 +56,20 @@ const SandboxManager = class SandboxManager {
     }
 
     addObject( type, id ) {
-        Log_SMan.Info("Adding object");        
+        Log_SMan.Info("Adding object");
         let newObj = new SandboxObject(null, type, id);
-        this.props.push(newObj);
+
+        switch(type) {
+            case "block":
+                this.blocks.push(newObj);
+                break;
+            case "enemy":
+                this.enemies.push(newObj);
+                break;
+            case "prop":
+                this.props.push(newObj);
+                break;
+        }
     }
 
     updateObject( type, oldData, newData ) {
