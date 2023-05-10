@@ -1,4 +1,5 @@
 import Logger from './logger';
+import SandboxObject from './sandboxobject';
 
 const Log_SMan = new Logger("SandboxManager");
 
@@ -6,13 +7,21 @@ const Log_SMan = new Logger("SandboxManager");
 const SandboxManager = class SandboxManager {
     map;
 
+    blocks = [];
+    props = [];
+    enemies = [];
+
     constructor() {
         this.map = {};
     }
 
     loadMap(map) {
-        Log_SMan.Info("Loading map");
+        Log_SMan.Info("Parsing save data");
         this.map = map;
+
+        for (var prop of this.map.Props) {
+            let sboxobj = new SandboxObject(prop);
+        }
     }
 
     getBlocks() {

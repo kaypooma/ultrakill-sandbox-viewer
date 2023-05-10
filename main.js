@@ -11,6 +11,8 @@ import ObjectGui from './objectgui';
 import PropGeneric from './propgeneric';
 import MathEx from './mathex';
 
+import SandboxObject from './sandboxobject';
+
 // import * as jsondata from './data.js';
 import defaultSceneData from './data/defaultscene.json';
 
