@@ -1,4 +1,8 @@
 {
+   "uksandbox.missing": {
+      "color": "0xFF3131",
+      "emissive": "0xFF3131"
+   },
    "ultrakill.brush-plastic": {
       "color": "0xC8C3AB"
    },

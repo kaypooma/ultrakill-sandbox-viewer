@@ -553,7 +553,7 @@ const updateSelectedState = ( obj, state ) => {
 const updateEditingObjectMaterial = (obj) => {
     if ( !obj ) return
 
-    let emissiveColor = 0x000000
+    let emissiveColor = obj.userData.material.emissive || 0x000000
 
     if ( obj.userData.hoverState ) emissiveColor = 0xdddddd
     if ( obj.userData.selectedState ) emissiveColor = 0xff00ff
