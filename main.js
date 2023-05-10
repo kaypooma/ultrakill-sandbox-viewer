@@ -11,8 +11,6 @@ import ObjectGui from './objectgui';
 import PropGeneric from './propgeneric';
 import MathEx from './mathex';
 
-import SandboxObject from './sandboxobject';
-
 // import * as jsondata from './data.js';
 import defaultSceneData from './data/defaultscene.json';
 
@@ -69,47 +67,21 @@ const clock = new THREE.Clock()
 
 const createNewBlock = (id) => {
     // spawn near the camera because sandbox tends to be very offset.
+    // TODO: Figure out how to work this into the new system
     let spawnPos = {'x': 0, 'y': 0, 'z': 0}
 
     spawnPos.x = -camera.position.x
     spawnPos.y = camera.position.y
     spawnPos.z = camera.position.z - 9
 
-    let Block = {
-        'BlockSize': {'x': 1, 'y': 1, 'z': 1},
-
-        'BlockType': 1,
-        'Kinematic': false,
-        'ObjectIdentifier': id,
-
-        'Position': spawnPos,
-        'Rotation': {'x': 0, 'y': 0, 'z': 0, 'w': 0},
-        'Scale': {'x': 1, 'y': 1, 'z': 1},
-
-        'Data': [
-            {
-                'Key': 'breakable',
-                'Options': [
-                    {
-                        'Key': 'weak',
-                        'BoolValue': false
-                    },
-                    {
-                        'Key': 'unbreakable',
-                        'BoolValue': false
-                    }
-                ]
-            }
-        ]
-    };
-
     Log_Main.Info(`Creating new block of type ${id}`)
     Sandbox.addObject('block', id)
-    reloadScene( scene );
+    reloadScene( scene )
 }
 
 const createNewProp = (id) => {
     // spawn near the camera because sandbox tends to be very offset.
+    // TODO: Figure out how to work this into the new system
     let spawnPos = {'x': 0, 'y': 0, 'z': 0}
 
     spawnPos.x = -camera.position.x
