@@ -1,5 +1,5 @@
 {
-    "BlockType": 4,
+    "BlockType": 5,
     "Props": {
         "breakable": {
             "weak": {"type": "BoolValue", "defaultValue": false},
