@@ -1,0 +1,8 @@
+{
+    "Type": "prop",
+    "Props": {
+        "jump-pad": {
+            "force": {"Type": "FloatValue", "Default": 55}
+        }
+    }
+}

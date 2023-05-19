@@ -1,0 +1,61 @@
+{
+   "ultrakill.brush-plastic": {
+      "color": "0xC8C3AB"
+   },
+   "ultrakill.brush-metal": {
+      "color": "0x56544A"
+   },
+   "ultrakill.brush-armor": {
+      "color": "0x4D4D4D"
+   },
+   "ultrakill.brush-wood": {
+      "color": "0xAC8E65"
+   },
+   "ultrakill.brush-grass": {
+      "color": "0x708835"
+   },
+   "ultrakill.brush-glass": {
+      "color": "0xB3B1A8",
+      "transparent": true,
+      "opacity": 0.7
+   },
+   "ultrakill.brush-water": {
+      "color": "0x76AAB4",
+      "transparent": true,
+      "opacity": 0.7
+   },
+   "ultrakill.brush-hot-sand": {
+      "color": "0xECA33A"
+   },
+   "ultrakill.brush-lava": {
+      "color": "0xFFFF0E",
+      "transparent": true,
+      "opacity": 0.7
+   },
+   "ultrakill.brush-acid": {
+      "color": "0xD59B15",
+      "transparent": true,
+      "opacity": 0.7
+   },
+   "ultrakill.ramp": {
+      "color": "0x877057"
+   },
+   "ultrakill.ramp-stone": {
+      "color": "0x838179"
+   },
+   "ultrakill.barrel": {
+      "color": "0x995D36"
+   },
+   "ultrakill.explosive-barrel": {
+      "color": "0xFF2126"
+   },
+   "ultrakill.barrier": {
+      "color": "0xC8C3AB"
+   },
+   "ultrakill.tree": {
+      "color": "0x6A652B"
+   },
+   "ultrakill.melon": {
+      "color": "0x67A54C"
+   }
+}

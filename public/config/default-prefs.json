@@ -1,0 +1,10 @@
+[
+    {
+        "Key": "moveSpeed",
+        "IntValue": 10
+    },
+    {
+        "Key": "moveSpeedMult",
+        "IntValue": 10
+    }
+]

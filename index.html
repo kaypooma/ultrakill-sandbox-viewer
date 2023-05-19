@@ -4,307 +4,114 @@
         <meta charset="UTF-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>ultra kills you</title>
+        <title>ultrakill sandbox editor</title>
 
-        <style>
-            body {
-                background: #000;
-            }
-
-            @font-face {
-                font-family: 'VCR OSD Mono';
-                src: url('assets/fonts/VCROSDMono.woff2') format('woff2'),
-                    url('assets/fonts/VCROSDMono.woff') format('woff');
-
-                font-weight: normal;
-                font-style: normal;
-                font-display: swap;
-            }
-
-            body {
-                margin: 0;
-                font-family: 'VCR OSD Mono', monospace;
-                font-size: 21px;
-                color: #ddd;
-
-                box-sizing: border-box;
-                user-select: none;
-            }
-
-            #file_input_container, #save_container {
-                /* width: 200px; */
-
-                position: absolute;
-                top: 5px;
-                left: 5px;
-
-                background: rgba(255, 255, 255, 0.25);
-
-                width: 260px;
-                height: 24px;
-
-                padding: 10px;
-                border: 1px outset #222;
-            }
-
-            #save_container {
-                width: fit-content;
-                height: fit-content;
-
-                left: auto;
-                top: auto;
-
-                bottom: 5px;
-                right: 5px;
-            }
-            #save_container button {
-                font-family: 'VCR OSD Mono', monospace;
-                font-size: 21px;
-                padding: 10px;
-                
-                width: 200px;
-
-                background: #222;
-                color: #ddd;
-            }
-
-            .object_data_container {
-                width: 350px;
-
-                position: absolute;
-                top: 5px;
-                right: 5px;
-                
-                background: rgba(255, 255, 255, 0.25);
-
-                padding: 10px;
-
-                border: 1px outset #222;
-
-                text-shadow: 0 2px 0 #000;
-            }
-
-            .object_data_container > p:first-child {
-                text-align: left;
-            }
-            .object_data_container p {
-                text-align: center;
-                margin: 0;
-            }
-
-            .three_split {
-                display: grid;
-                width: 100%;
-
-                grid-template-columns: 1fr 1fr 1fr;
-                grid-template-rows: 1fr 0.25fr;
-
-                gap: 5px;
-                justify-content: center;
-
-                margin-top: 5px;
-            }
-            .three_split input {
-                display: block;
-
-                padding: 3px;
-
-                min-width: 0;
-
-                background: #222;
-                color: #ddd;
-
-                font-family: 'VCR OSD Mono', monospace;
-                font-size: 0.8em;
-            }
-            .three_split span {
-                text-align: center;
-                font-size: 0.75em;
-            }
-            .three_split span:nth-of-type(1) {
-                color: #f00;
-            }
-            .three_split span:nth-of-type(2) {
-                color: #0f0;
-            }
-            .three_split span:nth-of-type(3) {
-                color: #00f;
-            }
-
-            hr {
-                border: 2px inset #222;
-            }
-            hr.thin {
-                border: none;
-                height: 1px;
-                background: #222;
-            }
-
-            .hidden {
-                display: none;
-            }
-
-            #help {
-                font-family: 'VCR OSD Mono', monospace;
-
-                font-size: 21px;
-
-                background: rgba(255, 255, 255, 0.25);
-                color: #ddd;
-
-                position: absolute;
-
-                width: 45px;
-                height: 45px;
-
-                padding: 10px;
-
-                top: 5px;
-                left: 290px;
-            }
-
-            #help_dialog {
-                width: 450px;
-                height: fit-content;
-
-                position: absolute;
-                margin: auto;
-
-                top: 0;
-                bottom: 0;
-                left: 0;
-                right: 0;
-
-                background: #404040;
-                border: 1px outset #222;
-
-                padding: 20px;
-
-                text-shadow: 0 2px 0 #000;
-                
-                display: none;
-                flex-direction: column;
-            }
-            #help_dialog p {
-                margin: 5px;
-            }
-            /* #help_dialog p:first-child {
-                margin-top: 0;
-            }
-            #help_dialog p:last-child {
-                margin-bottom: 0;
-            } */
-
-            #help_dialog button {                
-                font-family: 'VCR OSD Mono', monospace;
-                font-size: 21px;
-                padding: 5px;
-                
-                width: 100px;
-
-                background: #222;
-                color: #ddd;
-            }
-
-            #help_dialog div {
-                display: flex;
-                justify-content: right;
-
-                margin-top: 20px;
-            }
-
-            .delete_selected_object {
-                width: 30px;
-                height: 30px;
-                position: absolute;
-
-                right: 10px;
-                top: 6px;     
-
-                font-family: 'VCR OSD Mono', monospace;
-                font-size: 21px;
-
-                background: red;
-                border: 2px outset red;
-                color: #ddd;
-            }
-            .delete_selected_object:active {
-                border: 2px inset red;
-            }
-
-            .toggle label:after {
-                content: 'x';
-                text-align: center;
-                line-height: 18px;
-
-                text-shadow: none;
-
-                display: inline-block;
-
-                width: 20px;
-                height: 20px;
-
-                background: #222;
-                border: 1px outset #222;
-                color: #222;
-
-                margin-left: 10px;                
-            }
-            input[type="checkbox"]:checked + label:after {
-                background: red;
-                border: 1px inset #222;
-            }
-            input[type="checkbox"][disabled] + label:after {
-                background: #aaa;
-                border: 1px solid #aaa;
-
-                color: #ddd;
-            }
-
-            .toggle input[type="checkbox"] {
-                opacity: 0;
-                position: absolute;
-            }
-        </style>
+		<link rel="stylesheet" href="ultrakill.scss">
+		<link rel="stylesheet" href="uksandbox.scss">
     </head>
     <body>
         <div id="file_input_container">
-            <input type="file" id="sandbox_file">
+        		<button onclick="document.getElementById('sandbox_file').click();">
+        			Open File
+        		</button>
+            <input type="file" style="opacity: 0; height: 0;" id="sandbox_file">
         </div>
         <div id="save_container">
             <button id="save">save</button>
         </div>
+		
+		<div style="position: absolute; top: 5px; left: 40%;">
+			<button style="width: 48px; height: 48px;" id="mode-move">
+				<img style="vertical-align: middle;" src="assets/images/icons/icon-move.png"></img>
+			</button>
+			<button style="width: 48px; height: 48px;" id="mode-rot">
+				<img style="vertical-align: middle;" src="assets/images/icons/icon-rotate.png"></img>
+			</button>
+			<button style="width: 48px; height: 48px;" id="mode-scale">
+				<img style="vertical-align: middle;" src="assets/images/icons/icon-scale.png"></img>
+			</button>
+			<button style="width: 48px; height: 48px;" id="mode-none">
+				<img style="vertical-align: middle;" src="assets/images/icons/icon-pan.png"></img>
+			</button>
+			<button style="width: 48px; height: 48px;" onclick="SetOverlayVisible(true, 'addObject');">
+				<img style="vertical-align: middle;" src="assets/images/icons/icon-add.png"></img>
+			</button>
+		</div>
+		
+		<button id="help" onclick="SetOverlayVisible(true, 'help');">?</button>
+		
+		<div id="help-panel-container" class="center overlay" style="z-index: 10;">
+			<div class="uk-panel" id="help-panel" 
+			style="width: 750px; height: fit-content; 
+			display:flex; flex-direction: column;">
+				<h1>ULTRAKILL Sandbox Editor</h1><br>
+				<label>Sounds & Icons by ULTRAKILL Team</label><br>
+				<label>Additional Icons by ashisharky</label><br>
+				<label>Programmed by kaypooma & ashisharky</label>
+				
+				<h1>Controls</h1>
+				<table><tr>
+				<td>
+					<label>[WASD] move</label><br>
+					<label>[Q] descend, [E] ascend</label><br>
+					<label>[SHIFT] increase movement speed</label><br>
+					<label>[LEFT CLICK] rotate view</label><br>
+					<label>[RIGHT CLICK] select objects</label><br>
+				</td>
+				<td>
+					<label>[CTRL+G] translation</label><br>
+					<label>[CTRL+R] rotation</label><br>
+					<label>[CTRL+S] scaling</label><br>
 
-        <button id="help">?</button>
-        <div id="help_dialog">
-            <p>WASD to move</p>
-            <p>Q to descend, E to ascend</p>
-            <p>SHIFT to increase movement speed</p>
-            <p>LEFT CLICK to rotate view</p>
-            <p>RIGHT CLICK to select objects</p>
-
-            <br>
-
-            <p>CTRL+G for translation</p>
-            <p>CTRL+R for rotation</p>
-            <p>CTRL+S for scaling</p>
-
-            <p>ALT to enable snapping</p>
-
-            <div><button id="close_help_dialog">close</button></div>
-        </div>
+					<label>[ALT] enable snapping</label><br>
+				</td>
+				</tr></table>
+				<button href="https://github.com/kaypooma/ultrakill-sandbox-viewer">Source Code</button>
+				<button onclick="SetOverlayVisible(false, 'help');"
+				style="width: 100%;">
+					close
+				</button>
+			</div>
+		</div>
+		
+		<div id="addObject-panel-container" class="center overlay">
+			<div style="width: 800px;" class="uk-panel" id="addObject-panel">
+				<button id="brushTab">Brushes</button>
+				<button id="propTab">Props</button>
+				<button id="enemyTab">Enemies</button>
+				<div id="brushlist"
+				style="display: grid; grid-template-columns: auto auto; overflow-y: scroll;
+				min-width: 500px; height: 400px">
+				
+				</div>
+				<div id="enemylist"
+				style="display: none; grid-template-columns: auto auto; overflow-y: scroll;
+				min-width: 500px; height: 400px">
+				
+				</div>
+				<div id="proplist"
+				style="display: none; grid-template-columns: auto auto; overflow-y: scroll;
+				min-width: 500px; height: 400px">
+				
+				</div>
+				<button onclick="SetOverlayVisible(false, 'addObject');"
+				style="width: 100%;">
+					Close
+				</button>
+			</div>
+		</div>
 
         <!-- Combine These Cool -->
-        <div class="object_data_container hidden" id="block_data">
+        <div class="uk-panel object_data_container hidden" id="block_data">
             <p id="block_type">object</p>
-            <button class="delete_selected_object"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Pro 6.4.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) Copyright 2023 Fonticons, Inc. --><path fill="currentColor" d="M135.2 17.7L128 32H32C14.3 32 0 46.3 0 64S14.3 96 32 96H416c17.7 0 32-14.3 32-32s-14.3-32-32-32H320l-7.2-14.3C307.4 6.8 296.3 0 284.2 0H163.8c-12.1 0-23.2 6.8-28.6 17.7zM416 128H32L53.2 467c1.6 25.3 22.6 45 47.9 45H346.9c25.3 0 46.3-19.7 47.9-45L416 128z"/></svg></button>
+            <button class="delete_selected_object"><img src="assets/images/icons/icon-del.png"></img></button>
             <hr>
             <div class="control">
                 <p>position</p>
                 <div class="three_split" id="position">
-                    <input type="number" class="position_x" step="0.5" data-property="Position.x">
-                    <input type="number" class="position_y" step="0.5" data-property="Position.y">
-                    <input type="number" class="position_z" step="0.5" data-property="Position.z">
+                    <input type="number" class="position_x" step="0.5" data-property="position.x">
+                    <input type="number" class="position_y" step="0.5" data-property="position.y">
+                    <input type="number" class="position_z" step="0.5" data-property="position.z">
 
                     <span>X</span>
                     <span>Y</span>
@@ -315,9 +122,9 @@
             <div class="control">
                 <p>scale</p>
                 <div class="three_split" id="scale">
-                    <input type="number" class="scale auto_exclude" data-property="x" step="0.25">
-                    <input type="number" class="scale auto_exclude" data-property="y" step="0.25">
-                    <input type="number" class="scale auto_exclude" data-property="z" step="0.25">
+                    <input type="number" class="scale auto_exclude" id="scale_x" data-property="x" step="0.25">
+                    <input type="number" class="scale auto_exclude" id="scale_y" data-property="y" step="0.25">
+                    <input type="number" class="scale auto_exclude" id="scale_z" data-property="z" step="0.25">
 
                     <span>X</span>
                     <span>Y</span>
@@ -340,26 +147,78 @@
             <hr class="thin">
             <div class="control">
                 <div class="toggle">
-                    <input type="checkbox" id="block_frozen" data-property="Kinematic">
-                    <label for="block_frozen">frozen</label>
+                		<label class="container">frozen
+                    	<input type="checkbox" id="block_frozen" data-property="Kinematic">
+                    	<span class="checkmark"></span>
+                    </label>
                 </div>
             </div>
             <hr class="thin">
             <div class="control">
                 <div class="toggle">
-                    <input type="checkbox" id="block_weak" class="auto_exclude">
-                    <label for="block_weak">weak</label>
+                	<label class="container">weak
+                		<input type="checkbox" id="block_weak" class="auto_exclude">
+  									<span class="checkmark"></span>
+  								</label>
                 </div>
                 <div class="toggle">
+                	<label class="container">unbreakable
                     <input type="checkbox" id="block_unbreakable" class="auto_exclude">
-                    <label for="block_unbreakable">unbreakable</label>
+                		<span class="checkmark"></span>
+                	</label>
                 </div>
             </div>
         </div>
         <div class="object_data_container" id="disabled_data">
             <p>no object selected</p>
         </div>
+		
+		<div class="center overlay" id="startup-panel-container"
+			style="background-color: #444444;">
+			<div class="uk-panel uk-panel-open" id="startup-panel" style="width: 800px; height: 500px; text-align: center;">
+				<!-- I hate centering things -->
+				<div style="top: 15%; position: relative;">
+					<img style="width: 400px; margin-left: auto; margin-right: auto; display: block;" 
+					src="assets/images/Logo.png"></img><br>
+					Sandbox Save Editor
+					<br><br>
+					<button style="width: 200px; height: 50px;"
+					onclick="SetOverlayVisible(false, 'startup');">New Save</button><br><br>
+					<button style="width: 200px; height: 50px;"
+						onclick="document.getElementById('sandbox_file').click();">
+						Open Save
+					</button><br><br>
+					<button style="width: 200px; height: 50px;"
+						onclick="SetOverlayVisible(true, 'help');">
+						About
+					</button>
+				</div>
+			</div>	
+		</div>
+
+		<div style="position: absolute; bottom: 25px; left: 25px;">
+			<div id="loginf-notice" style="display: none;">
+				<img src="assets/images/icons/icon-warn.png">
+				<div style="display: inline-block;">
+					<label id="log-wcount"></label><label> Warnings</label>
+					<br>
+					<label id="log-ecount"></label><label> Errors</label>
+				</div>
+				<br><label style="font-size: 12px;">Check browser console</label>
+			</div>
+		</div>
         
-        <script type="module" src="main.js"></script>
+
+		<!-- standard js used to handle the overlay panels -->
+		<script src="gui.js"></script>
+    <script type="module" src="main.js"></script>
+		<script>
+			RegisterOverlayPanel('help');
+			RegisterOverlayPanel('addObject');
+			RegisterOverlayPanel('startup');
+			
+			SetOverlayVisible(false, 'help');
+			SetOverlayVisible(false, 'addObject');
+		</script>
     </body>
 </html>

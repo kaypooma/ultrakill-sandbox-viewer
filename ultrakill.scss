@@ -1,0 +1,227 @@
+@font-face {
+	font-family: 'VCR OSD Mono';
+	src: url('assets/fonts/VCROSDMono.woff2') format('woff2'),
+		url('assets/fonts/VCROSDMono.woff') format('woff');
+
+	font-weight: normal;
+	font-style: normal;
+	font-display: swap;
+}
+
+body {
+  background-color: rgb(0, 0, 0);
+}
+
+.center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.overlay {
+  position: absolute;
+  top: 0%;
+  left: 0%;
+  width: 100%;
+  height: 100%;
+}
+
+/* uk mixins */
+
+@mixin uk-base {
+  color: white;
+  font-family: 'VCR OSD Mono';
+  font-size: 24px;
+}
+
+/* standard UK UI element background */
+@mixin uk-bg {
+  background-color: rgba(0, 0, 0, 0.75);
+  border: 4px solid white;
+  border-radius: 3px;
+}
+
+/* uk animations */
+
+@keyframes panelOpen {
+  from {
+    transform: scale(0, 0.1);
+  }
+
+  75% {
+    transform: scale(0.75, 0.1);
+  }
+
+  to {
+    transform: scale(1, 1);
+  }
+}
+
+@keyframes panelClose {
+  from {
+    transform: scale(1, 1);
+  }
+
+  75% {
+    transform: scale(0.75, 0.1);
+  }
+
+  to {
+    transform: scale(0, 0);
+  }
+}
+
+.uk-panel-open {
+  animation-name: panelOpen;
+  animation-duration: 0.15s;
+  animation-timing-function: linear;
+}
+
+.uk-panel-close {
+  animation-name: panelClose;
+  animation-duration: 0.15s;
+  animation-timing-function: linear;
+}
+
+/* uk themed webkit elements */
+
+/* width */
+::-webkit-scrollbar {
+  width: 30px;
+}
+
+/* Track */
+::-webkit-scrollbar-track {
+  background: #0a0a0aaa; 
+}
+ 
+/* Handle */
+::-webkit-scrollbar-thumb {
+  background: #FFFFFFaa;
+  border-radius: 5px;
+}
+
+/* Handle on hover */
+::-webkit-scrollbar-thumb:hover {
+  background: #FFFFFF; 
+}
+
+/* uk menu items */
+
+.uk-panel {
+  @include uk-base;
+  @include uk-bg;
+  
+  padding: 5px;
+}
+
+.uk-list-item {
+  @include uk-base;
+  @include uk-bg;
+
+  width: auto;
+  margin-bottom: 10px;
+  min-height: 30px;
+  padding: 2px;
+
+  label {
+    vertical-align: center;
+    height: 100%;
+  }
+
+  button {
+    float: right;
+    margin-left: 5px;
+    display: inline;
+  }
+
+  &::after {
+    content: "";
+    clear: both;
+    display: table;
+  }
+}
+
+button, .uk-button { 
+  @include uk-base;
+  @include uk-bg;
+
+  &:hover {
+    background-color: rgba(100, 100, 100, 0.75);
+  }
+
+  &:checked, &:active {
+    background-color: rgba(255, 255, 255, 1);
+    color: black;
+  }
+}
+
+/* messy but works. can't style the existing asset without help though. */
+
+.container {
+  display: block;
+  position: relative;
+  padding-left: 45px;
+  margin-bottom: 16px;
+  cursor: pointer;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Hide the browser's default checkbox */
+.container input {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  height: 25px;
+  width: 25px;
+}
+
+/* Create a custom checkbox */
+.checkmark {
+  @include uk-base;
+  @include uk-bg;
+
+  position: absolute;
+  top: -3px;
+  left: 0;
+  height: 25px;
+  width: 25px;
+}
+
+/* On mouse-over, add a grey background color */
+.container:hover input ~ .checkmark {
+  background-color: rgba(100, 100, 100, 0.75);
+}
+
+/* When the checkbox is checked, add a blue background */
+.container input:checked ~ .checkmark {
+  background-color: black;
+}
+
+/* Create the checkmark/indicator (hidden when not checked) */
+.checkmark:after {
+  content: "";
+  position: absolute;
+  display: none;
+}
+
+/* Show the checkmark when checked */
+.container input:checked ~ .checkmark:after {
+  display: block;
+}
+
+.container input:disabled ~ .checkmark {
+  border: 4px solid rgb(155, 155, 155);
+}
+
+/* Style the checkmark/indicator */
+.container .checkmark:after {
+  left: 3px;
+  top: 3px;
+  width: 19px;
+  height: 19px;
+  background-color: white;
+}

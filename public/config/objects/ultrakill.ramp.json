@@ -1,0 +1,8 @@
+{
+  "Props": {
+    "breakable": {
+      "weak": {"type": "BoolValue", "defaultValue": true},
+      "unbreakable": {"type": "BoolValue", "defaultValue": false}
+    }
+  }
+}

@@ -4,23 +4,39 @@ import { TransformControls } from 'three/addons/controls/TransformControls.js'
 
 import CameraControls from 'camera-controls';
 
-import { SandboxManager } from './sandman';
-import { defaultSceneData } from './defaultscene';
+import SandboxManager from './sandman';
+import Logger from './logger';
+import AddObjectMenu from './addobjectmenu';
+import ObjectGui from './objectgui';
+import PropGeneric from './propgeneric';
+import MathEx from './mathex';
+
+import SandboxObject from './sandboxobject';
+
+// import * as jsondata from './data.js';
+import defaultSceneData from './data/defaultscene.json';
 
 CameraControls.install({ THREE: THREE })
 
+const AddMenu = new AddObjectMenu("unused")
 const Sandbox = new SandboxManager()
-const Prefs = { 
+const Prefs = {
     moveSpeed: 10, moveSpeedMult: 10,
     getMoveSpeed: () => { return Prefs.moveSpeed*(KeyPressed.ShiftLeft ? Prefs.moveSpeedMult : 1) },
 }
+
 const EditingObject = {
     hovered: false,
     selected: false
 }
+
 const AxisDisplay = {}
 
 let sandboxFilename
+
+// loggers
+let Log_Main = new Logger("Main")
+let Log_FS = new Logger("FS")
 
 // file stuff
 const fileElement = document.getElementById('sandbox_file')
@@ -33,6 +49,9 @@ const handleSandboxFile = () => {
         reader.onload = (e) => {
             Sandbox.loadMap( JSON.parse(e.target.result) )
             reloadScene(scene)
+            if (IsOverlayVisible('startup') == true) {
+                SetOverlayVisible(false, 'startup');
+            }
         }
 
         reader.readAsText(files[0])
@@ -42,113 +61,69 @@ const handleSandboxFile = () => {
 
 fileElement.addEventListener('change', handleSandboxFile, false)
 
-
 // 3d stuff
 let scene, camera, renderer
 let controls
 
 const clock = new THREE.Clock()
 
-// unity quaternion ->       x, y, z,  w
-// to threejs quaternion -> -x, y, z, -w
-// to euler
-// 
+const createNewBlock = (id) => {
+    // spawn near the camera because sandbox tends to be very offset.
+    let spawnPos = {'x': 0, 'y': 0, 'z': 0}
 
-const convertFromUnityQuaternion = ( x, y, z, w ) => {
-    let quaternion = new THREE.Quaternion( -x, y, z, -w )
+    spawnPos.x = -camera.position.x
+    spawnPos.y = camera.position.y
+    spawnPos.z = camera.position.z - 9
 
-    let v = new THREE.Euler()
+    let Block = {
+        'BlockSize': {'x': 1, 'y': 1, 'z': 1},
 
-    v.setFromQuaternion( quaternion )
-    v.y += Math.PI
-    v.z *= -1
+        'BlockType': 1,
+        'Kinematic': false,
+        'ObjectIdentifier': id,
 
-    return v
-}
-const convertToUnityQuaternion = ( x, y, z ) => {
-    let euler = new THREE.Euler( x, y, z )
+        'Position': spawnPos,
+        'Rotation': {'x': 0, 'y': 0, 'z': 0, 'w': 0},
+        'Scale': {'x': 1, 'y': 1, 'z': 1},
 
-    euler.y -= Math.PI
-    euler.z *= -1
+        'Data': [
+            {
+                'Key': 'breakable',
+                'Options': [
+                    {
+                        'Key': 'weak',
+                        'BoolValue': false
+                    },
+                    {
+                        'Key': 'unbreakable',
+                        'BoolValue': false
+                    }
+                ]
+            }
+        ]
+    };
 
-    let quaternion = new THREE.Quaternion().setFromEuler( euler )
-
-    quaternion.x *= -1
-    quaternion.w *= -1
-
-    return quaternion
-}
-
-const objectMaterials = {
-    'ultrakill.brush-plastic': { color: 0xC8C3AB },
-    'ultrakill.brush-metal': { color: 0x56544A },
-    'ultrakill.brush-wood': { color: 0xAC8E65 },
-    'ultrakill.brush-grass': { color: 0x708835 },
-    'ultrakill.brush-glass': { color: 0xB3B1A8, transparent: true, opacity: 0.7 },
-    'ultrakill.brush-water': { color: 0x76AAB4, transparent: true, opacity: 0.7 },
-    'ultrakill.brush-hot-sand': { color: 0xECA33A },
-    'ultrakill.brush-lava': { color: 0xFFFF0E, transparent: true, opacity: 0.7 },
-    'ultrakill.brush-acid': { color: 0xD59B15, transparent: true, opacity: 0.7 },
-
-    'ultrakill.ramp': { color: 0x877057 },
-    'ultrakill.ramp-stone': { color: 0x838179 },
-
-    'ultrakill.barrel': { color: 0x995D36 },
-    'ultrakill.explosive-barrel': { color: 0xFF2126 },
-
-    'ultrakill.barrier': { color: 0xC8C3AB },
-    
-    'ultrakill.tree': { color: 0x6A652B },
-
-    'ultrakill.melon': { color: 0x67A54C },
+    Log_Main.Info(`Creating new block of type ${id}`)
+    Sandbox.addObject('block', id)
+    reloadScene( scene );
 }
 
-const PropGeneric = class PropGeneric {
-    geometry
+const createNewProp = (id) => {
+    // spawn near the camera because sandbox tends to be very offset.
+    let spawnPos = {'x': 0, 'y': 0, 'z': 0}
 
-    solidMaterial
-    frameMaterial
+    spawnPos.x = -camera.position.x
+    spawnPos.y = camera.position.y
+    spawnPos.z = camera.position.z - 9
 
-    solidMesh
-    frameMesh
+    Log_Main.Info(`Creating new prop of type ${id}`)
+    Sandbox.addObject('prop', id)
+    reloadScene( scene )
+}
 
-    scaleGroup = new THREE.Group()
-    positionGroup = new THREE.Group()
-
-    constructor( propData, options, block ) {
-        this.geometry = options.geometry
-        
-        // material setup
-        this.solidMaterial = new THREE.MeshLambertMaterial( objectMaterials[ propData.ObjectIdentifier ] ) || new THREE.MeshLambertMaterial({ color: 0xff00ff })
-        this.frameMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, wireframe: true, transparent: true, opacity: 0.4 })
-
-        // mesh setup
-        this.solidMesh = new THREE.Mesh( this.geometry, this.solidMaterial )
-        this.frameMesh = new THREE.Mesh( this.geometry, this.frameMaterial )
-
-        // scale group
-        this.scaleGroup.add( this.solidMesh )
-        this.scaleGroup.add( this.frameMesh )
-
-        if (block) {
-            this.scaleGroup.scale.set( propData.BlockSize.x, propData.BlockSize.y, propData.BlockSize.z )
-        } else {
-            this.scaleGroup.scale.set( propData.Scale.x, propData.Scale.y, propData.Scale.z )            
-        }
-
-        // position/rotation group
-        this.positionGroup.add( this.scaleGroup )
-        
-        this.positionGroup.position.set( -propData.Position.x, propData.Position.y, propData.Position.z )
-        this.positionGroup.rotation.copy( convertFromUnityQuaternion( propData.Rotation.x, propData.Rotation.y, propData.Rotation.z, propData.Rotation.w ) )
-
-        // userdata setup
-        this.solidMesh.userData.objectData = propData
-        this.solidMesh.userData.objectType = block ? 'block' : 'prop'
-        this.solidMesh.userData.parentGroup = this.positionGroup
-        this.solidMesh.userData.scaleGroup = this.scaleGroup
-        this.solidMesh.userData.drawFunc = options.drawFunc
-    }
+AddMenu.addCallbacks = {
+    'brushes': createNewBlock,
+    'props': createNewProp
 }
 
 const addBlock = ( scene, blockData ) => {
@@ -162,52 +137,32 @@ const addBlock = ( scene, blockData ) => {
     }
 
     scene.add( block.positionGroup )
-    return block.solidMesh    
+    return block.solidMesh
 }
-// const addBlock = ( scene, blockData ) => {
-//     let geometry = new THREE.BoxGeometry( blockData.BlockSize.x, blockData.BlockSize.y, blockData.BlockSize.z )
 
-//     let solid = new THREE.MeshLambertMaterial( objectMaterials[ blockData.ObjectIdentifier ] )
-//     let frame = new THREE.MeshBasicMaterial({ color: 0x000000, wireframe: true, transparent: true, opacity: 0.4 })
+const addProp = {}
 
-//     let blockSolid = new THREE.Mesh( geometry, solid )
-//     let blockFrame = new THREE.Mesh( geometry, frame )
+addProp['unknown'] = ( scene, propData ) => {
+    let prop = new PropGeneric( propData, {
+        geometry: objectGeometry['uksandbox.missing'],
+        drawFunc: addProp['unknown']
+    })
 
-//     blockSolid.userData.objectData = blockData
-//     blockSolid.userData.objectType = 'block'
-    
-//     for ( let cube of [ blockSolid, blockFrame ] ) {
-//         cube.position.set( blockData.BlockSize.x/2, blockData.BlockSize.y/2, -blockData.BlockSize.z/2 )
-//     }
+    scene.add( prop.positionGroup )
+    return prop.solidMesh
+}
 
-//     let blockGroup = new THREE.Group()
-//     blockGroup.add( blockSolid )
-//     blockGroup.add( blockFrame )
-
-//     let euler = convertFromUnityQuaternion( blockData.Rotation.x, blockData.Rotation.y, blockData.Rotation.z, blockData.Rotation.w )
-    
-//     blockGroup.position.set( -blockData.Position.x, blockData.Position.y, blockData.Position.z )
-//     blockGroup.rotation.copy( euler )
-
-//     blockSolid.userData.parentGroup = blockGroup
-//     blockSolid.userData.drawFunc = addBlock
-
-//     scene.add( blockGroup )
-
-//     return blockSolid
-// }
-
-const addRamp = ( scene, propData ) => {
+addProp['ultrakill.ramp'] = ( scene, propData ) => {
     let shape = new THREE.Shape()
 
-    shape.moveTo( 0,  0 ) 
+    shape.moveTo( 0,  0 )
     shape.lineTo( 4,  0 )
     shape.lineTo( 0,  4 )
     shape.lineTo( 0,  0 )
 
     let ramp = new PropGeneric( propData, {
         geometry: new THREE.ExtrudeGeometry( shape, { depth: 4, bevelEnabled: false } ),
-        drawFunc: addRamp
+        drawFunc: addProp['ultrakill.ramp']
     })
 
     for ( let mesh of [ ramp.solidMesh, ramp.frameMesh ] ) {
@@ -218,10 +173,12 @@ const addRamp = ( scene, propData ) => {
     scene.add( ramp.positionGroup )
     return ramp.solidMesh
 }
-const addBarrel = ( scene, propData ) => {
+addProp['ultrakill.ramp-stone'] = addProp['ultrakill.ramp']
+
+addProp['ultrakill.barrel'] = ( scene, propData ) => {
     let barrel = new PropGeneric( propData, {
         geometry: new THREE.CylinderGeometry( 1, 1, 3, 8 ),
-        drawFunc: addBarrel
+        drawFunc: addProp['ultrakill.barrel']
     })
 
     for ( let mesh of [ barrel.solidMesh, barrel.frameMesh ] ) {
@@ -232,10 +189,12 @@ const addBarrel = ( scene, propData ) => {
     scene.add( barrel.positionGroup )
     return barrel.solidMesh
 }
-const addBarrier = ( scene, propData ) => {
+addProp['ultrakill.explosive-barrel'] = addProp['ultrakill.barrel']
+
+addProp['ultrakill.barrier'] = ( scene, propData ) => {
     let barrier = new PropGeneric( propData, {
         geometry: objectGeometry['ultrakill.barrier'],
-        drawFunc: addBarrier
+        drawFunc: addProp['ultrakill.barrier']
     })
 
     for ( let mesh of [ barrier.solidMesh, barrier.frameMesh ] ) {
@@ -246,19 +205,21 @@ const addBarrier = ( scene, propData ) => {
     scene.add( barrier.positionGroup )
     return barrier.solidMesh
 }
-const addTree = ( scene, propData ) => {
+
+addProp['ultrakill.tree'] = ( scene, propData ) => {
     let tree = new PropGeneric( propData, {
         geometry: objectGeometry['ultrakill.tree'],
-        drawFunc: addTree
+        drawFunc: addProp['ultrakill.tree']
     })
 
     scene.add( tree.positionGroup )
     return tree.solidMesh
 }
-const addMelon = ( scene, propData ) => {
+
+addProp['ultrakill.melon'] = ( scene, propData ) => {
     let melon = new PropGeneric( propData, {
         geometry: new THREE.IcosahedronGeometry( 1, 1 ),
-        drawFunc: addMelon
+        drawFunc: addProp['ultrakill.melon']
     })
 
     for ( let mesh of [ melon.solidMesh, melon.frameMesh ] ) {
@@ -277,28 +238,18 @@ const drawSandboxBlocks = ( scene, blocks ) => {
         addBlock( scene, blockData )
     }
 }
+
 const drawSandboxProps = ( scene, props ) => {
     for ( let i=0; i<props.length; i++ ) {
-        let propData = props[i]
+        let prop = props[i]
 
-        if ( propData.ObjectIdentifier.indexOf('ultrakill.ramp') !== -1 ) {
-            addRamp( scene, propData )
-        }
-
-        if ( propData.ObjectIdentifier.indexOf('barrel') !== -1 ) {
-            addBarrel( scene, propData )
-        }
-
-        if ( propData.ObjectIdentifier === 'ultrakill.barrier' ) {
-            addBarrier( scene, propData )
-        }
-
-        if ( propData.ObjectIdentifier === 'ultrakill.tree' ) {
-            addTree( scene, propData )
-        }
-
-        if ( propData.ObjectIdentifier === 'ultrakill.melon' ) {
-            addMelon( scene, propData )
+        // turn back on if you need paranoid logging
+        Log_Main.Info(`Found prop with type ${prop.id}`)
+        if (addProp[prop.id] == null) {
+            Log_Main.Warn(`No draw func is defined for prop type ${prop.id}. This object will not appear correctly.`)
+            addProp['unknown']( scene, prop )
+        } else {
+            addProp[prop.id]( scene, prop )
         }
     }
 }
@@ -323,13 +274,13 @@ const clearScene = ( scene ) => {
         if ( obj.type === 'Group' ) disposeGroup(obj)
     } )
 }
-const reloadScene = ( scene ) => {    
+const reloadScene = ( scene ) => {
     clearScene( scene )
 
     EditingObject.selected = false
     EditingObject.hovered = false
 
-    disableGUI()
+    ObjGui.disableGUI()
     disableFreeTransform()
 
     drawSandboxBlocks(scene, Sandbox.getBlocks())
@@ -344,6 +295,48 @@ const addLights = ( scene ) => {
     scene.add( ambient )
 }
 
+const moveBut = document.getElementById('mode-move');
+const rotBut = document.getElementById('mode-rot');
+const scaleBut = document.getElementById('mode-scale');
+const noneBut = document.getElementById('mode-none');
+
+moveBut.addEventListener('click', () => {
+	if ( EditingObject.hovered ) {
+		updateHoverState( EditingObject.hovered, false )
+		EditingObject.hovered = false
+	}
+
+	if ( EditingObject.selected ) {
+		handleFreeTranslate( EditingObject.selected )
+	}
+});
+
+rotBut.addEventListener('click', () => {
+	if ( EditingObject.hovered ) {
+		updateHoverState( EditingObject.hovered, false )
+		EditingObject.hovered = false
+	}
+
+	if ( EditingObject.selected ) {
+		handleFreeRotate( EditingObject.selected )
+	}
+});
+
+scaleBut.addEventListener('click', () => {
+	if ( EditingObject.hovered ) {
+		updateHoverState( EditingObject.hovered, false )
+		EditingObject.hovered = false
+	}
+
+	if ( EditingObject.selected ) {
+		handleFreeScale( EditingObject.selected )
+	}
+});
+
+noneBut.addEventListener('click', () => {
+	disableFreeTransform()
+});
+
 // keyboard controls
 const KeyPressed = {}
 
@@ -351,8 +344,8 @@ let reservedKeys = ['KeyR', 'KeyS', 'KeyG']
 document.addEventListener('keydown', e => {
     if ( document.activeElement.tagName === 'INPUT' && reservedKeys.indexOf(e.code) !== -1 ) {
         e.preventDefault()
-        e.stopPropagation()     
-        
+        e.stopPropagation()
+
         document.getElementsByTagName('CANVAS')[0].focus()
         document.activeElement.blur()
     }
@@ -369,7 +362,7 @@ document.addEventListener('keydown', e => {
 
             disableFreeTransform()
 
-            disableGUI()
+            ObjGui.disableGUI()
         }
 
         if ( e.code === 'Delete' ) {
@@ -378,7 +371,7 @@ document.addEventListener('keydown', e => {
 
                 EditingObject.selected = false
 
-                disableGUI()
+                ObjGui.disableGUI()
             }
         }
 
@@ -389,7 +382,7 @@ document.addEventListener('keydown', e => {
         if ( KeyPressed.ControlLeft && e.code === 'KeyR' ) {
             if ( EditingObject.hovered ) {
                 updateHoverState( EditingObject.hovered, false )
-                EditingObject.hovered = false    
+                EditingObject.hovered = false
             }
 
             if ( EditingObject.selected ) {
@@ -399,7 +392,7 @@ document.addEventListener('keydown', e => {
         if ( KeyPressed.ControlLeft && e.code === 'KeyG' ) {
             if ( EditingObject.hovered ) {
                 updateHoverState( EditingObject.hovered, false )
-                EditingObject.hovered = false    
+                EditingObject.hovered = false
             }
 
             if ( EditingObject.selected ) {
@@ -409,7 +402,7 @@ document.addEventListener('keydown', e => {
         if ( KeyPressed.ControlLeft && e.code === 'KeyS' ) {
             if ( EditingObject.hovered ) {
                 updateHoverState( EditingObject.hovered, false )
-                EditingObject.hovered = false    
+                EditingObject.hovered = false
             }
 
             if ( EditingObject.selected ) {
@@ -421,7 +414,7 @@ document.addEventListener('keydown', e => {
 document.addEventListener('keyup', e => {
     if ( document.activeElement.tagName !== 'INPUT' ) {
         KeyPressed[e.code] = false
-        
+
         e.preventDefault()
         e.stopPropagation()
 
@@ -456,7 +449,7 @@ const getIntersectingObject = ( scene ) => {
             if ( intersects[i].object.userData.objectData ) mesh = intersects[i]
         }
     }
-    
+
     return mesh || false
 }
 
@@ -476,6 +469,7 @@ const enableTransformSnapping = () => {
     FreeTransform.control.translationSnap = 0.5
     FreeTransform.control.setScaleSnap(0.25)
 }
+
 const disableTransformSnapping = () => {
     FreeTransform.control.rotationSnap = null
     FreeTransform.control.translationSnap = null
@@ -493,13 +487,13 @@ const handleFreeTranslate = ( obj, redrawing = false ) => {
     }
 
     let group = obj.userData.parentGroup
-    
+
     FreeTransform.control = setupTransformControls( group )
 
     FreeTransform.control.setMode('translate')
-    FreeTransform.control.addEventListener('mouseUp', e => {        
+    FreeTransform.control.addEventListener('mouseUp', e => {
         updateObjectPosition( obj, { x: group.position.x, y: group.position.y, z: group.position.z } )
-        updateObjectGUI( obj )
+        ObjGui.updateGUI( obj )
     })
 
     FreeTransform.redraw = () => handleFreeTranslate( EditingObject.selected, true )
@@ -519,13 +513,13 @@ const handleFreeRotate = ( obj, redrawing = false ) => {
     }
 
     let group = obj.userData.parentGroup
-    
+
     FreeTransform.control = setupTransformControls( group )
 
     FreeTransform.control.setMode('rotate')
-    FreeTransform.control.addEventListener('mouseUp', e => {        
+    FreeTransform.control.addEventListener('mouseUp', e => {
         updateObjectRotation( obj, { x: group.rotation.x, y: group.rotation.y, z: group.rotation.z } )
-        updateObjectGUI( obj )
+        ObjGui.updateGUI( obj )
     })
 
     FreeTransform.redraw = () => handleFreeRotate( EditingObject.selected, true )
@@ -545,13 +539,13 @@ const handleFreeScale = ( obj, redrawing = false ) => {
     }
 
     let group = obj.userData.scaleGroup
-    
+
     FreeTransform.control = setupTransformControls( group )
 
     FreeTransform.control.setMode('scale')
-    FreeTransform.control.addEventListener('mouseUp', e => {        
+    FreeTransform.control.addEventListener('mouseUp', e => {
         updateObjectScaleAll( obj, { x: group.scale.x, y: group.scale.y, z: group.scale.z } )
-        updateObjectGUI( obj )
+        ObjGui.updateGUI( obj )
     })
 
     FreeTransform.redraw = () => handleFreeScale( EditingObject.selected, true )
@@ -586,9 +580,9 @@ const updateSelectedState = ( obj, state ) => {
 }
 const updateEditingObjectMaterial = (obj) => {
     if ( !obj ) return
-    
+
     let emissiveColor = 0x000000
-    
+
     if ( obj.userData.hoverState ) emissiveColor = 0xdddddd
     if ( obj.userData.selectedState ) emissiveColor = 0xff00ff
 
@@ -615,8 +609,8 @@ const updateSelectedObject = () => {
     if ( EditingObject.hovered ) {
         if ( EditingObject.selected ) {
             updateSelectedState( EditingObject.selected, false )
-        } 
-        
+        }
+
         EditingObject.selected = EditingObject.hovered
         updateSelectedState( EditingObject.selected, true )
     } else {
@@ -640,13 +634,13 @@ const handleMouseMove = ( e ) => {
     if (!FreeTransform.control) updateHoveredObject( getIntersectingObject( scene ) )
 }
 const handleMouseDown = ( e ) => {
-    if (e.button === 2) { 
+    if (e.button === 2) {
         updateSelectedObject()
 
         if (EditingObject.selected) {
-            updateGUI( EditingObject.selected )
+            ObjGui.updateGUI( EditingObject.selected )
         } else {
-            disableGUI()
+            ObjGui.disableGUI()
         }
     }
 }
@@ -655,7 +649,7 @@ document.addEventListener('mousemove', e => {
     if ( document.elementFromPoint( e.clientX, e.clientY ) && document.elementFromPoint( e.clientX, e.clientY ).tagName !== 'CANVAS' ) {
         if ( EditingObject.hovered ) {
             updateHoverState( EditingObject.hovered, false )
-            EditingObject.hovered = false    
+            EditingObject.hovered = false
         }
     }
 })
@@ -701,8 +695,8 @@ const updateObjectScale = ( obj, axis, value ) => {
     if ( !obj ) return
 
     let data = getObjectData( obj )
-    let property = obj.userData.objectType === 'block' ? 'BlockSize' : 'Scale'
-    
+    let property = 'scale'
+
     data[property][axis] = value
 
     redrawObject( obj, data )
@@ -711,8 +705,8 @@ const updateObjectScaleAll = ( obj, scale ) => {
     if ( !obj ) return
 
     let data = getObjectData( obj )
-    let property = obj.userData.objectType === 'block' ? 'BlockSize' : 'Scale'
-    
+    let property = 'scale'
+
     data[property].x = scale.x
     data[property].y = scale.y
     data[property].z = scale.z
@@ -723,10 +717,10 @@ const updateObjectPosition = ( obj, position ) => {
     if ( !obj ) return
 
     let data = getObjectData( obj )
-    
-    data.Position.x = -position.x
-    data.Position.y = position.y
-    data.Position.z = position.z
+
+    data.position.x = -position.x
+    data.position.y = position.y
+    data.position.z = position.z
 
     redrawObject( obj, data )
 }
@@ -734,12 +728,12 @@ const updateObjectRotation = ( obj, rotation ) => {
     if ( !obj ) return
 
     let data = getObjectData( obj )
-    let unityQuaternion = convertToUnityQuaternion( rotation.x, rotation.y, rotation.z )
+    let unityQuaternion = MathEx.toUnityQuaternion( rotation.x, rotation.y, rotation.z )
 
-    data.Rotation.x = unityQuaternion.x
-    data.Rotation.y = unityQuaternion.y
-    data.Rotation.z = unityQuaternion.z
-    data.Rotation.w = unityQuaternion.w
+    data.rotation.x = unityQuaternion.x
+    data.rotation.y = unityQuaternion.y
+    data.rotation.z = unityQuaternion.z
+    data.rotation.w = unityQuaternion.w
 
     redrawObject( obj, data )
     // console.log( obj.userData.objectData.Rotation, unityQuaternion )
@@ -749,7 +743,7 @@ const redrawObject = ( obj, newData ) => {
     let oldData = obj.userData.objectData
 
     disposeGroup( obj.userData.parentGroup )
-    
+
     let redrawnObject = obj.userData.drawFunc( scene, newData )
     EditingObject.selected = redrawnObject
     updateSelectedState( EditingObject.selected, true )
@@ -780,7 +774,7 @@ const hideAxisDisplay = () => {
         scene.remove( AxisDisplay.object )
 
         AxisDisplay.object = false
-    }    
+    }
 }
 
 const AxisDisplayObject = class AxisDisplayObject {
@@ -793,13 +787,13 @@ const AxisDisplayObject = class AxisDisplayObject {
         let axisLineGeometry = new THREE.BufferGeometry().setFromPoints( axisLinePoints )
 
         let axisLine = new THREE.Line( axisLineGeometry, new THREE.LineBasicMaterial({ color: axisColors[axis] }) )
-        
+
         // axisLine.renderOrder = 999
         // axisLine.material.depthTest = false
 
         let axisDotted = new THREE.Line( axisLineGeometry, new THREE.LineDashedMaterial({ color: axisColors[axis], dashSize: 0.5, gapSize: 0.5, scale: 1 }) )
         axisDotted.computeLineDistances()
-        
+
         axisDotted.renderOrder = 999
         axisDotted.material.depthTest = false
 
@@ -846,8 +840,8 @@ const RotationalAxisDisplayObject = class RotationalAxisDisplayObject {
             let plane = ['x', 'y', 'z']
             plane.splice( plane.indexOf(currentAxis), 1 )
 
-            let points = []          
-            let mult = currentAxis === axis ? 3 : 2  
+            let points = []
+            let mult = currentAxis === axis ? 3 : 2
             for (let i=0; i<17; i++) {
                 let point = new THREE.Vector3(0, 0, 0)
 
@@ -941,7 +935,7 @@ const drawRotationalAxisDisplay = ( obj, axis ) => {
 const handleNumberInput = (input) => {
     input.addEventListener('input', e => {
         if (EditingObject.selected) updateObjectProperty( EditingObject.selected, input.dataset.property, parseFloat(input.value) )
-    })    
+    })
 
     if ( input.dataset.property.indexOf('Position') !== -1 ) {
         input.addEventListener('focus', e => {
@@ -949,20 +943,20 @@ const handleNumberInput = (input) => {
             disableFreeTransform()
         })
     }
-    if ( input.dataset.property.indexOf('Scale') !== -1 || input.dataset.property.indexOf('BlockSize') !== -1 ) {
+    if ( input.dataset.property.indexOf('scale') !== -1 ) {
         input.addEventListener('focus', e => {
             drawScalingAxisDisplay( EditingObject.selected, input.dataset.property.split('.')[1] )
         })
     }
-    
+
     input.addEventListener('blur', e => {
-        if ( input.dataset.property.indexOf('Scale') !== -1 || input.dataset.property.indexOf('BlockSize') !== -1 ) {
+        if ( input.dataset.property.indexOf('scale') !== -1 ) {
             if ( parseFloat(input.value) === 0 || parseFloat(input.value) === -0 ) { // negative zero yeah
                 input.value = 0.001
                 if (EditingObject.selected) updateObjectProperty( EditingObject.selected, input.dataset.property, parseFloat(input.value) )
             }
         }
-        
+
         hideAxisDisplay()
     })
 }
@@ -974,232 +968,68 @@ const handleToggleInput = (input) => {
 
 const GUI = {}
 
-const updateGUI = ( obj ) => {
-    let guiElements = document.querySelectorAll('.object_data_container')
-    for (let el of guiElements) {
-        el.classList.add('hidden')
-    }
+const ObjGui = new ObjectGui();
 
-    switch (obj.userData.objectType) {
-        case 'block':
-            updateObjectGUI( obj )
-            break
-        case 'prop':
-            updateObjectGUI( obj )
-            break
-        default:
-            return 'unknown object type'
-    }
-}
-
-// disabled 
-GUI.disabled = {}
-GUI.disabled.element = document.getElementById('disabled_data')
-
-const disableGUI = () => {
-    let guiElements = document.querySelectorAll('.object_data_container')
-    for (let el of guiElements) {
-        el.classList.add('hidden')
-    }
-    
-    GUI.disabled.element.classList.remove('hidden')
-}
-
-// block
-GUI.object = {}
-GUI.object.element = document.getElementById('block_data')
-
-const toDegrees = ( rad ) => {
-    return rad * 180/Math.PI
-}
-const toRadians = ( rad ) => {
-    return rad * Math.PI/180
-}
-
-const updateObjectGUI = ( obj ) => {
-    let data = obj.userData.objectData
-
-    if ( !data ) return
-
-    let scale = obj.userData.objectType === 'block' ? data.BlockSize : data.Scale
-
-    GUI.object.element.classList.remove('hidden')
-
-    GUI.object.element.querySelector('#block_type').innerText = data.ObjectIdentifier
-
-    let posInputs = Array.from( GUI.object.element.querySelectorAll('#position input') )
-    posInputs[0].value = data.Position.x
-    posInputs[1].value = data.Position.y
-    posInputs[2].value = data.Position.z
-
-    let scaleInputs = Array.from( GUI.object.element.querySelectorAll('#scale input') )
-    scaleInputs[0].value = scale.x
-    scaleInputs[1].value = scale.y
-    scaleInputs[2].value = scale.z
-
-    let rotationInputs = Array.from( GUI.object.element.querySelectorAll('.rotation') )
-
-    let eulerRotation = convertFromUnityQuaternion( data.Rotation.x, data.Rotation.y, data.Rotation.z, data.Rotation.w )
-
-    rotationInputs[0].value = toDegrees(eulerRotation.x)
-    rotationInputs[1].value = toDegrees(eulerRotation.y)
-    rotationInputs[2].value = toDegrees(eulerRotation.z)
-
-    let frozenInput = GUI.object.element.querySelector('#block_frozen')
-    frozenInput.checked = data.Kinematic
-
-    let weakInput = GUI.object.weakToggle
-    let unbreakableInput = GUI.object.unbreakableToggle
-
-    if ( data.Data ) {
-        weakInput.disabled = false
-        weakInput.checked = data.Data[0].Options[0].BoolValue
-
-        unbreakableInput.disabled = false
-        unbreakableInput.checked = data.Data[0].Options[1].BoolValue
-    } else {
-        weakInput.disabled = true
-        weakInput.checked = false
-
-        unbreakableInput.disabled = true
-        unbreakableInput.checked = false
-    }
-}
-
-GUI.object.numberInputs = GUI.object.element.querySelectorAll('input[type="number"]')
-for (let input of GUI.object.numberInputs) {
+for (let input of ObjGui.object.numberInputs) {
     if ( !input.classList.contains('auto_exclude') ) {
         handleNumberInput( input )
     }
 }
 
-GUI.object.scaleInputs = GUI.object.element.querySelectorAll('.scale')
-for (let input of GUI.object.scaleInputs) {
+for (let input of ObjGui.object.scaleInputs) {
     input.addEventListener('input', e => {
         updateObjectScale( EditingObject.selected, input.dataset.property, parseFloat(input.value) )
     })
-    
+
     input.addEventListener('focus', e => {
         drawScalingAxisDisplay( EditingObject.selected, input.dataset.property )
         disableFreeTransform()
     })
-    
+
     input.addEventListener('blur', e => {
         if ( parseFloat(input.value) === 0 || parseFloat(input.value) === -0 ) { // negative zero yeah
             input.value = 0.001
             if (EditingObject.selected) updateObjectProperty( EditingObject.selected, input.dataset.property, parseFloat(input.value) )
         }
-        
+
         hideAxisDisplay()
     })
 }
 
-GUI.object.rotationInputs = GUI.object.element.querySelectorAll('.rotation')
-GUI.object.rotationX = GUI.object.element.querySelector('#rotation_x')
-GUI.object.rotationY = GUI.object.element.querySelector('#rotation_y')
-GUI.object.rotationZ = GUI.object.element.querySelector('#rotation_z')
-
-for (let input of GUI.object.rotationInputs) {
+for (let input of ObjGui.object.rotationInputs) {
     input.addEventListener('input', e => {
-        let x = toRadians(parseFloat(GUI.object.rotationX.value))
-        let y = toRadians(parseFloat(GUI.object.rotationY.value))
-        let z = toRadians(parseFloat(GUI.object.rotationZ.value))
+        let x = MathEx.toRadians(parseFloat(ObjGui.object.rotationX.value))
+        let y = MathEx.toRadians(parseFloat(ObjGui.object.rotationY.value))
+        let z = MathEx.toRadians(parseFloat(ObjGui.object.rotationZ.value))
 
         if (EditingObject.selected) {
             updateObjectRotation( EditingObject.selected, { x: x, y: y, z: z } )
         }
     })
-    
+
     input.addEventListener('focus', e => {
         drawRotationalAxisDisplay( EditingObject.selected, input.id.split('_')[1] )
         disableFreeTransform()
     })
 
-    input.addEventListener('blur', e => {        
+    input.addEventListener('blur', e => {
         hideAxisDisplay()
     })
 }
 
-GUI.object.toggleInputs = GUI.object.element.querySelectorAll('input[type="checkbox"]')
-for (let input of GUI.object.toggleInputs) {
+for (let input of ObjGui.object.toggleInputs) {
     if ( !input.classList.contains('auto_exclude') ) {
         handleToggleInput( input )
     }
 }
 
-GUI.object.weakToggle = GUI.object.element.querySelector('#block_weak')
-GUI.object.weakToggle.addEventListener('change', e => {
+ObjGui.object.weakToggle.addEventListener('change', e => {
     if (EditingObject.selected) updateObjectWeak( EditingObject.selected, GUI.object.weakToggle.checked )
 })
 
-GUI.object.unbreakableToggle = GUI.object.element.querySelector('#block_unbreakable')
-GUI.object.unbreakableToggle.addEventListener('change', e => {
+ObjGui.object.unbreakableToggle.addEventListener('change', e => {
     if (EditingObject.selected) updateObjectUnbreakable( EditingObject.selected, GUI.object.unbreakableToggle.checked )
 })
-
-// prop (i think this is basically the exact same setup as the block gui oops)
-// GUI.prop = {}
-// GUI.prop.element = document.getElementById('prop_data')
-
-// const updatePropGUI = ( data ) => {
-//     if (!data) return
-
-//     GUI.prop.element.classList.remove('hidden')
-
-//     GUI.prop.element.querySelector('#prop_type').innerText = data.ObjectIdentifier
-
-//     let posInputs = Array.from( GUI.prop.element.querySelectorAll('#position input') )
-//     posInputs[0].value = data.Position.x
-//     posInputs[1].value = data.Position.y
-//     posInputs[2].value = data.Position.z
-
-//     let scaleInputs = Array.from( GUI.prop.element.querySelectorAll('#scale input') )
-//     scaleInputs[0].value = data.Scale.x
-//     scaleInputs[1].value = data.Scale.y
-//     scaleInputs[2].value = data.Scale.z
-
-//     let frozenInput = GUI.prop.element.querySelector('#prop_frozen')
-//     frozenInput.checked = data.Kinematic
-
-//     let weakInput = GUI.prop.weakToggle
-//     let unbreakableInput = GUI.prop.unbreakableToggle
-
-//     if ( data.Data ) {
-//         weakInput.disabled = false
-//         weakInput.checked = data.Data[0].Options[0].BoolValue
-
-//         unbreakableInput.disabled = false
-//         unbreakableInput.checked = data.Data[0].Options[1].BoolValue
-//     } else {
-//         weakInput.disabled = true
-//         weakInput.checked = false
-
-//         unbreakableInput.disabled = true
-//         unbreakableInput.checked = false
-//     }
-// }
-
-// GUI.prop.numberInputs = GUI.prop.element.querySelectorAll('input[type="number"]')
-// for (let input of GUI.prop.numberInputs) {
-//     if ( !input.classList.contains('auto_exclude') ) {
-//         handleNumberInput( input )
-//     }
-// }
-
-// GUI.prop.toggleInputs = GUI.prop.element.querySelectorAll('input[type="checkbox"]')
-// for (let input of GUI.prop.toggleInputs) {
-//     handleToggleInput( input )
-// }
-
-// GUI.prop.weakToggle = GUI.prop.element.querySelector('#prop_weak')
-// GUI.prop.weakToggle.addEventListener('change', e => {
-//     if (EditingObject.selected) updateObjectWeak( EditingObject.selected, GUI.prop.weakToggle.checked )
-// })
-
-// GUI.prop.unbreakableToggle = GUI.prop.element.querySelector('#prop_unbreakable')
-// GUI.prop.unbreakableToggle.addEventListener('change', e => {
-//     if (EditingObject.selected) updateObjectUnbreakable( EditingObject.selected, GUI.prop.unbreakableToggle.checked )
-// })
 
 GUI.deleteElements = document.querySelectorAll('.delete_selected_object')
 for (let el of GUI.deleteElements) {
@@ -1208,8 +1038,8 @@ for (let el of GUI.deleteElements) {
             deleteObject( EditingObject.selected )
 
             EditingObject.selected = false
-            disableGUI()
-        }        
+            ObjGui.disableGUI()
+        }
     })
 }
 
@@ -1225,16 +1055,7 @@ document.getElementById('save').addEventListener('click', e => {
     URL.revokeObjectURL(link.href)
 })
 
-// help
-if ( !localStorage.getItem('seenHelpDialog') ) document.getElementById('help_dialog').style.display = 'flex'
 
-document.getElementById('close_help_dialog').addEventListener('click', () => {
-    document.getElementById('help_dialog').style.display = 'none'
-    localStorage.setItem('seenHelpDialog', 'true')
-})
-document.getElementById('help').addEventListener('click', () => {
-    document.getElementById('help_dialog').style.display = 'flex'
-})
 
 // render stuff
 const setupDefaultScene = ( controls ) => {
@@ -1242,7 +1063,7 @@ const setupDefaultScene = ( controls ) => {
     controls.truck( -60, false )
     controls.rotate( Math.PI - Math.PI/9, 0, false )
 
-    Sandbox.loadMap( JSON.parse(defaultSceneData) )
+    Sandbox.loadMap( defaultSceneData )
     reloadScene( scene )
 }
 
@@ -1291,64 +1112,64 @@ class InfiniteGridHelper extends THREE.Mesh {
             },
             transparent: true,
             vertexShader: `
-       
+
        varying vec3 worldPosition;
-       
+
        uniform float uDistance;
-       
+
        void main() {
-       
+
             vec3 pos = position.${axes} * uDistance;
             pos.${planeAxes} += cameraPosition.${planeAxes};
-            
+
             worldPosition = pos;
-            
+
             gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
-       
+
        }
        `,
 
 
             fragmentShader: `
-       
+
        varying vec3 worldPosition;
-       
+
        uniform float uSize1;
        uniform float uSize2;
        uniform vec3 uColor;
        uniform float uDistance;
-        
-        
-        
+
+
+
         float getGrid(float size) {
-        
+
             vec2 r = worldPosition.${planeAxes} / size;
-            
-            
+
+
             vec2 grid = abs(fract(r - 0.5) - 0.5) / fwidth(r);
             float line = min(grid.x, grid.y);
-            
-        
+
+
             return 1.0 - min(line, 1.0);
         }
-        
+
        void main() {
-       
-            
+
+
               float d = 1.0 - min(distance(cameraPosition.${planeAxes}, worldPosition.${planeAxes}) / uDistance, 1.0);
-            
+
               float g1 = getGrid(uSize1);
               float g2 = getGrid(uSize2);
-              
-              
+
+
               gl_FragColor = vec4(uColor.rgb, mix(g2, g1, g1) * pow(d, 3.0));
               gl_FragColor.a = mix(0.5 * gl_FragColor.a, gl_FragColor.a, g2);
-            
+
               if ( gl_FragColor.a <= 0.0 ) discard;
-            
-       
+
+
        }
-       
+
        `,
 
             extensions: {
@@ -1366,7 +1187,12 @@ class InfiniteGridHelper extends THREE.Mesh {
 }
 
 const init = () => {
-    scene = new THREE.Scene()
+    Log_Main.Info("Creating Scene")
+    try {
+        scene = new THREE.Scene()
+    } catch(ex) {
+        Log_Main.Error(`Failed to create scene: ${ex.message}`)
+    }
     camera = new THREE.PerspectiveCamera( 75, window.innerWidth/window.innerHeight, 0.1, 1000 )
 
     addLights( scene )
@@ -1393,8 +1219,10 @@ const init = () => {
     document.body.appendChild(renderer.domElement)
     renderer.domElement.addEventListener('mousemove', handleMouseMove, false)
     renderer.domElement.addEventListener('mousedown', handleMouseDown, false)
-    
+
     window.addEventListener( 'resize', resize )
+
+    AddMenu.updateLists()
 
     update()
 }
@@ -1404,11 +1232,11 @@ const update = () => {
     // keyboard camera movement
     if (!KeyPressed.ControlLeft) {
         if (KeyPressed.KeyW) controls.forward( Prefs.getMoveSpeed() * delta, false )
-        if (KeyPressed.KeyS) controls.forward( -Prefs.getMoveSpeed() * delta, false ) 
-        if (KeyPressed.KeyD) controls.truck(  Prefs.getMoveSpeed() * delta, false ) 
-        if (KeyPressed.KeyA) controls.truck( -Prefs.getMoveSpeed() * delta, false ) 
-        if (KeyPressed.KeyE) controls.elevate(  Prefs.getMoveSpeed() * delta, false ) 
-        if (KeyPressed.KeyQ) controls.elevate( -Prefs.getMoveSpeed() * delta, false ) 
+        if (KeyPressed.KeyS) controls.forward( -Prefs.getMoveSpeed() * delta, false )
+        if (KeyPressed.KeyD) controls.truck(  Prefs.getMoveSpeed() * delta, false )
+        if (KeyPressed.KeyA) controls.truck( -Prefs.getMoveSpeed() * delta, false )
+        if (KeyPressed.KeyE) controls.elevate(  Prefs.getMoveSpeed() * delta, false )
+        if (KeyPressed.KeyQ) controls.elevate( -Prefs.getMoveSpeed() * delta, false )
     }
 
     controls.update( delta )
@@ -1430,6 +1258,7 @@ const objectGeometry = {}
 
 const loadAsyncWithModelName = ( url ) => {
     return new Promise( resolve => {
+        Log_FS.Info(`Loading file '${url}'`)
         loader.load( url, obj => {
             let name = url.split('/')[2].split('.')[0]
             resolve( {model: obj, name: name} )
@@ -1437,11 +1266,15 @@ const loadAsyncWithModelName = ( url ) => {
     })
 }
 
+loadAsyncWithModelName('assets/models/missing.obj').then((model) => {
+    objectGeometry[ `uksandbox.missing` ] = model.model.children[0].geometry
+})
+
 Promise.all( modelsToLoad.map( x => loadAsyncWithModelName(x) ) ).then( models => {
     for ( let model of models ) {
         objectGeometry[ `ultrakill.${model.name}` ] = model.model.children[0].geometry
     }
-    
+
     init()
 })
 
