@@ -278,6 +278,21 @@ addProp['ultrakill.melon'] = ( scene, propData ) => {
     return melon.solidMesh
 }
 
+const addEnemy = ( scene, propData ) => {
+    let enemy = new PropGeneric( propData, {
+        geometry: objectGeometry['ultrakill.enemy'],
+        drawFunc: addEnemy
+    })
+
+    for ( let mesh of [ enemy.solidMesh, enemy.frameMesh ] ) {
+        mesh.position.set(0, 0, -1)
+        mesh.scale.set(1.5, 1, 1)
+    }
+
+    scene.add( enemy.positionGroup )
+    return enemy.solidMesh
+}
+
 const drawSandboxBlocks = ( scene, blocks ) => {
     for ( let i=0; i<blocks.length; i++ ) {
         let blockData = blocks[i]
@@ -298,6 +313,15 @@ const drawSandboxProps = ( scene, props ) => {
         } else {
             addProp[prop.id]( scene, prop )
         }
+    }
+}
+
+const drawSandboxEnemies = ( scene, enemies ) => {
+    for ( let i=0; i < enemies.length; i++ ) {
+        let enemy = enemies[i]
+
+        Log_Main.Info(`Found enemy with type ${enemy.id}`)
+        addEnemy( scene, enemy )
     }
 }
 
@@ -332,6 +356,7 @@ const reloadScene = ( scene ) => {
 
     drawSandboxBlocks(scene, Sandbox.getBlocks())
     drawSandboxProps(scene, Sandbox.getProps())
+    drawSandboxEnemies(scene, Sandbox.getEnemies())
 }
 
 const addLights = ( scene ) => {
@@ -1305,6 +1330,7 @@ const modelsToLoad = [
     'assets/models/checkpoint.obj',
     'assets/models/grapple-point.obj',
     'assets/models/grapple-point-blue.obj',
+    'assets/models/enemy.obj'
 ]
 const objectGeometry = {}
 
