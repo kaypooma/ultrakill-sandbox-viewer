@@ -55,6 +55,18 @@ const SandboxObject = class SandboxObject {
     frozen = false;
     blockType; // only has a value if we're a block
 
+    // enemy properties
+    radiance = {
+        'enabled': false,
+        'tier': 1.0,
+        'damageBuff': 1.5,
+        'speedBuff': 1.5,
+        'healthBuff': 2.0,
+        'damageEnabled': false,
+        'speedEnabled': false,
+        'healthEnabled': false
+    };
+
     /* JS doesn't support multiple constructors so I have to do this awfulness */
     constructor(pitrdata, type, id = "") {
         if (type != "block" && type != "enemy" && type != "prop") {
@@ -108,6 +120,11 @@ const SandboxObject = class SandboxObject {
 
         this.position = pitrdata.Position;
         this.rotation = pitrdata.Rotation;
+
+        // Radiance time :moth:
+        if (this.type == "enemy") {
+            this.radiance = pitrdata.Radiance;
+        }
 
         // parse existing data
         if (pitrdata['Data']) {
@@ -203,6 +220,11 @@ const SandboxObject = class SandboxObject {
             PITRData.BlockType = this.blockType;
             PITRData.BlockSize = this.scale;
             PITRData.Scale = {'x': 1, 'y': 1, 'z': 1};
+        }
+
+        // Radiance time :moth:
+        if (this.type == "enemy") {
+            PITRData.Radiance = this.radiance;
         }
 
         /* property groups */
