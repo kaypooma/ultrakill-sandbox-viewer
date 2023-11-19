@@ -61,5 +61,20 @@
    },
    "ultrakill.melon": {
       "color": "0x67A54C"
+   },
+   "ultrakill.maurice": {
+      "color": "0x838179"
+   },
+   "ultrakill.spawn-point": {
+      "color": "0x34aeeb"
+   },
+   "ultrakill.checkpoint": {
+      "color": "0xe834eb"
+   },
+   "ultrakill.grapple-point-blue": {
+      "color": "0x34aeeb"
+   },
+   "ultrakill.grapple-point": {
+      "color": "0x67A54C"
    }
 }

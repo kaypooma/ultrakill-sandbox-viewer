@@ -178,6 +178,81 @@ addProp['ultrakill.barrier'] = ( scene, propData ) => {
     return barrier.solidMesh
 }
 
+addProp['ultrakill.maurice'] = ( scene, propData ) => {
+    let maurice = new PropGeneric( propData, {
+        geometry: objectGeometry['ultrakill.maurice'],
+        drawFunc: addProp['ultrakill.maurice']
+    })
+
+    for ( let mesh of [ maurice.solidMesh, maurice.frameMesh ] ) {
+        mesh.position.set(0, 0, 0)
+        mesh.rotation.set(-Math.PI/2, 0, 0)
+    }
+
+    scene.add( maurice.positionGroup )
+    return maurice.solidMesh
+}
+
+addProp['ultrakill.spawn-point'] = ( scene, propData ) => {
+    let spawnpoint = new PropGeneric( propData, {
+        geometry: objectGeometry['ultrakill.spawn-point'],
+        drawFunc: addProp['ultrakill.spawn-point']
+    })
+
+    for ( let mesh of [ spawnpoint.solidMesh, spawnpoint.frameMesh ] ) {
+        mesh.position.set(0, 0, 0)
+        mesh.rotation.set(-Math.PI/2, 0, 0)
+    }
+
+    scene.add( spawnpoint.positionGroup )
+    return spawnpoint.solidMesh
+}
+
+addProp['ultrakill.checkpoint'] = ( scene, propData ) => {
+    let checkpoint = new PropGeneric( propData, {
+        geometry: objectGeometry['ultrakill.checkpoint'],
+        drawFunc: addProp['ultrakill.checkpoint']
+    })
+
+    for ( let mesh of [ checkpoint.solidMesh, checkpoint.frameMesh ] ) {
+        mesh.position.set(0, 0, 0)
+        mesh.rotation.set(-Math.PI/2, 0, 0)
+    }
+
+    scene.add( checkpoint.positionGroup )
+    return checkpoint.solidMesh
+}
+
+addProp['ultrakill.grapple-point'] = ( scene, propData ) => {
+    let grapplepoint = new PropGeneric( propData, {
+        geometry: objectGeometry['ultrakill.grapple-point'],
+        drawFunc: addProp['ultrakill.grapple-point']
+    })
+
+    for ( let mesh of [ grapplepoint.solidMesh, grapplepoint.frameMesh ] ) {
+        mesh.position.set(0, 0, 0)
+        mesh.rotation.set(-Math.PI/2, 0, 0)
+    }
+
+    scene.add( grapplepoint.positionGroup )
+    return grapplepoint.solidMesh
+}
+
+addProp['ultrakill.grapple-point-blue'] = ( scene, propData ) => {
+    let grapplepoint = new PropGeneric( propData, {
+        geometry: objectGeometry['ultrakill.grapple-point-blue'],
+        drawFunc: addProp['ultrakill.grapple-point-blue']
+    })
+
+    for ( let mesh of [ grapplepoint.solidMesh, grapplepoint.frameMesh ] ) {
+        mesh.position.set(0, 0, 0)
+        mesh.rotation.set(-Math.PI/2, 0, 0)
+    }
+
+    scene.add( grapplepoint.positionGroup )
+    return grapplepoint.solidMesh
+}
+
 addProp['ultrakill.tree'] = ( scene, propData ) => {
     let tree = new PropGeneric( propData, {
         geometry: objectGeometry['ultrakill.tree'],
@@ -1224,7 +1299,12 @@ const loader = new OBJLoader( manager )
 
 const modelsToLoad = [
     'assets/models/barrier.obj',
-    'assets/models/tree.obj'
+    'assets/models/tree.obj',
+    'assets/models/maurice.obj',
+    'assets/models/spawn-point.obj',
+    'assets/models/checkpoint.obj',
+    'assets/models/grapple-point.obj',
+    'assets/models/grapple-point-blue.obj',
 ]
 const objectGeometry = {}
 
