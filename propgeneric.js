@@ -23,11 +23,15 @@ const PropGeneric = class PropGeneric {
 
     // material setup
 		let mat = materials[ prop.id ];
-		if (mat != null) {
-		  mat.color = Number(mat.color);
-	  } else {
+
+    if (mat == null) {
 	    Log_Prop.Warn(`No material found for ${prop.id}. Object may not appear correctly.`);
+      mat = materials[ "uksandbox.missing" ];
     }
+
+    // convert hexadecimal values from strings to numbers (json doesn't support hexadecimal)
+    if (mat.color) mat.color = Number(mat.color);
+    if (mat.emissive) mat.emissive = Number(mat.emissive);
 
     this.solidMaterial = new THREE.MeshLambertMaterial( mat ) || new THREE.MeshLambertMaterial({ color: 0xff00ff });
     this.frameMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, wireframe: true, transparent: true, opacity: 0.4 });
@@ -49,6 +53,7 @@ const PropGeneric = class PropGeneric {
     this.positionGroup.rotation.copy( MathEx.fromUnityQuaternion( prop.rotation.x, prop.rotation.y, prop.rotation.z, prop.rotation.w ) );
 
     // userdata setup
+    this.solidMesh.userData.material = mat; // keep our material data here since materials do get modified a bit
     this.solidMesh.userData.objectData = prop;
     this.solidMesh.userData.objectType = block ? 'block' : 'prop';
     this.solidMesh.userData.parentGroup = this.positionGroup;

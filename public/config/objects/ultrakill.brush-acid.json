@@ -1,0 +1,9 @@
+{
+    "BlockType": 8,
+    "Props": {
+        "hurt_zone": {
+            "damage": {"type": "FloatValue", "defaultValue": "20.0"},
+            "hurt_cooldown": {"type": "FloatValue", "defaultValue": "1.0"}
+        }
+    }
+}

@@ -37,14 +37,25 @@ const SandboxManager = class SandboxManager {
         Log_SMan.Info(`Map: ${map.MapName}`);
         Log_SMan.Info(`Save Version: ${map.SaveVersion}, Game Version: ${map.GameVersion}`);
 
-        for (var blockData of this.map.Blocks) {
-            let sboxobj = new SandboxObject(blockData, 'block');
-            this.blocks.push(sboxobj);
+        if (this.map.Blocks != null) {
+            for (var blockData of this.map.Blocks) {
+                let sboxobj = new SandboxObject(blockData, 'block');
+                this.blocks.push(sboxobj);
+            }
         }
 
-        for (var propData of this.map.Props) {
-            let sboxobj = new SandboxObject(propData, 'prop');
-            this.props.push(sboxobj);
+        if (this.map.Props != null) {
+            for (var propData of this.map.Props) {
+                let sboxobj = new SandboxObject(propData, 'prop');
+                this.props.push(sboxobj);
+            }
+        }
+
+        if (this.map.Enemies != null) {
+            for (var enemyData of this.map.Enemies) {
+                let sboxobj = new SandboxObject(enemyData, 'enemy');
+                this.enemies.push(sboxobj);
+            }
         }
     }
 
@@ -54,11 +65,25 @@ const SandboxManager = class SandboxManager {
     getProps() {
         return this.props;
     }
+    getEnemies() {
+        return this.enemies;
+    }
 
     addObject( type, id ) {
-        Log_SMan.Info("Adding object");        
+        Log_SMan.Info("Adding object");
         let newObj = new SandboxObject(null, type, id);
-        this.props.push(newObj);
+
+        switch(type) {
+            case "block":
+                this.blocks.push(newObj);
+                break;
+            case "enemy":
+                this.enemies.push(newObj);
+                break;
+            case "prop":
+                this.props.push(newObj);
+                break;
+        }
     }
 
     updateObject( type, oldData, newData ) {
@@ -92,7 +117,7 @@ const SandboxManager = class SandboxManager {
         let mapData = {
             'Blocks': [],
             'Props': [],
-            'Enemeis': []
+            'Enemies': []
         }
         Object.assign(mapData, this.saveInfo);
 
@@ -105,6 +130,12 @@ const SandboxManager = class SandboxManager {
         for (let prop of this.props) {
             let PITRprop = prop.getPITRData();
             mapData.Props.push(PITRprop);
+        }
+
+        // PITRify enemies
+        for (let enemy of this.enemies) {
+            let PITRenemy = enemy.getPITRData();
+            mapData.Enemies.push(PITRenemy);
         }
 
         return JSON.stringify(mapData);

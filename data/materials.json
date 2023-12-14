@@ -1,4 +1,8 @@
 {
+   "uksandbox.missing": {
+      "color": "0xFF3131",
+      "emissive": "0xFF3131"
+   },
    "ultrakill.brush-plastic": {
       "color": "0xC8C3AB"
    },
@@ -56,6 +60,21 @@
       "color": "0x6A652B"
    },
    "ultrakill.melon": {
+      "color": "0x67A54C"
+   },
+   "ultrakill.maurice": {
+      "color": "0x838179"
+   },
+   "ultrakill.spawn-point": {
+      "color": "0x34aeeb"
+   },
+   "ultrakill.checkpoint": {
+      "color": "0xe834eb"
+   },
+   "ultrakill.grapple-point-blue": {
+      "color": "0x34aeeb"
+   },
+   "ultrakill.grapple-point": {
       "color": "0x67A54C"
    }
 }

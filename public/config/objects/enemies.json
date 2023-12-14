@@ -1,0 +1,7 @@
+{
+    "Props": {
+        "enemy-identifier": {
+            "health-bar": {"type": "BoolValue", "defaultValue": false}
+        }
+    }
+}

@@ -11,8 +11,6 @@ import ObjectGui from './objectgui';
 import PropGeneric from './propgeneric';
 import MathEx from './mathex';
 
-import SandboxObject from './sandboxobject';
-
 // import * as jsondata from './data.js';
 import defaultSceneData from './data/defaultscene.json';
 
@@ -69,47 +67,21 @@ const clock = new THREE.Clock()
 
 const createNewBlock = (id) => {
     // spawn near the camera because sandbox tends to be very offset.
+    // TODO: Figure out how to work this into the new system
     let spawnPos = {'x': 0, 'y': 0, 'z': 0}
 
     spawnPos.x = -camera.position.x
     spawnPos.y = camera.position.y
     spawnPos.z = camera.position.z - 9
 
-    let Block = {
-        'BlockSize': {'x': 1, 'y': 1, 'z': 1},
-
-        'BlockType': 1,
-        'Kinematic': false,
-        'ObjectIdentifier': id,
-
-        'Position': spawnPos,
-        'Rotation': {'x': 0, 'y': 0, 'z': 0, 'w': 0},
-        'Scale': {'x': 1, 'y': 1, 'z': 1},
-
-        'Data': [
-            {
-                'Key': 'breakable',
-                'Options': [
-                    {
-                        'Key': 'weak',
-                        'BoolValue': false
-                    },
-                    {
-                        'Key': 'unbreakable',
-                        'BoolValue': false
-                    }
-                ]
-            }
-        ]
-    };
-
     Log_Main.Info(`Creating new block of type ${id}`)
     Sandbox.addObject('block', id)
-    reloadScene( scene );
+    reloadScene( scene )
 }
 
 const createNewProp = (id) => {
     // spawn near the camera because sandbox tends to be very offset.
+    // TODO: Figure out how to work this into the new system
     let spawnPos = {'x': 0, 'y': 0, 'z': 0}
 
     spawnPos.x = -camera.position.x
@@ -206,6 +178,81 @@ addProp['ultrakill.barrier'] = ( scene, propData ) => {
     return barrier.solidMesh
 }
 
+addProp['ultrakill.maurice'] = ( scene, propData ) => {
+    let maurice = new PropGeneric( propData, {
+        geometry: objectGeometry['ultrakill.maurice'],
+        drawFunc: addProp['ultrakill.maurice']
+    })
+
+    for ( let mesh of [ maurice.solidMesh, maurice.frameMesh ] ) {
+        mesh.position.set(0, 0, 0)
+        mesh.rotation.set(-Math.PI/2, 0, 0)
+    }
+
+    scene.add( maurice.positionGroup )
+    return maurice.solidMesh
+}
+
+addProp['ultrakill.spawn-point'] = ( scene, propData ) => {
+    let spawnpoint = new PropGeneric( propData, {
+        geometry: objectGeometry['ultrakill.spawn-point'],
+        drawFunc: addProp['ultrakill.spawn-point']
+    })
+
+    for ( let mesh of [ spawnpoint.solidMesh, spawnpoint.frameMesh ] ) {
+        mesh.position.set(0, 0, 0)
+        mesh.rotation.set(-Math.PI/2, 0, 0)
+    }
+
+    scene.add( spawnpoint.positionGroup )
+    return spawnpoint.solidMesh
+}
+
+addProp['ultrakill.checkpoint'] = ( scene, propData ) => {
+    let checkpoint = new PropGeneric( propData, {
+        geometry: objectGeometry['ultrakill.checkpoint'],
+        drawFunc: addProp['ultrakill.checkpoint']
+    })
+
+    for ( let mesh of [ checkpoint.solidMesh, checkpoint.frameMesh ] ) {
+        mesh.position.set(0, 0, 0)
+        mesh.rotation.set(-Math.PI/2, 0, 0)
+    }
+
+    scene.add( checkpoint.positionGroup )
+    return checkpoint.solidMesh
+}
+
+addProp['ultrakill.grapple-point'] = ( scene, propData ) => {
+    let grapplepoint = new PropGeneric( propData, {
+        geometry: objectGeometry['ultrakill.grapple-point'],
+        drawFunc: addProp['ultrakill.grapple-point']
+    })
+
+    for ( let mesh of [ grapplepoint.solidMesh, grapplepoint.frameMesh ] ) {
+        mesh.position.set(0, 0, 0)
+        mesh.rotation.set(-Math.PI/2, 0, 0)
+    }
+
+    scene.add( grapplepoint.positionGroup )
+    return grapplepoint.solidMesh
+}
+
+addProp['ultrakill.grapple-point-blue'] = ( scene, propData ) => {
+    let grapplepoint = new PropGeneric( propData, {
+        geometry: objectGeometry['ultrakill.grapple-point-blue'],
+        drawFunc: addProp['ultrakill.grapple-point-blue']
+    })
+
+    for ( let mesh of [ grapplepoint.solidMesh, grapplepoint.frameMesh ] ) {
+        mesh.position.set(0, 0, 0)
+        mesh.rotation.set(-Math.PI/2, 0, 0)
+    }
+
+    scene.add( grapplepoint.positionGroup )
+    return grapplepoint.solidMesh
+}
+
 addProp['ultrakill.tree'] = ( scene, propData ) => {
     let tree = new PropGeneric( propData, {
         geometry: objectGeometry['ultrakill.tree'],
@@ -231,6 +278,21 @@ addProp['ultrakill.melon'] = ( scene, propData ) => {
     return melon.solidMesh
 }
 
+const addEnemy = ( scene, propData ) => {
+    let enemy = new PropGeneric( propData, {
+        geometry: objectGeometry['ultrakill.enemy'],
+        drawFunc: addEnemy
+    })
+
+    for ( let mesh of [ enemy.solidMesh, enemy.frameMesh ] ) {
+        mesh.position.set(0, 0, -1)
+        mesh.scale.set(1.5, 1, 1)
+    }
+
+    scene.add( enemy.positionGroup )
+    return enemy.solidMesh
+}
+
 const drawSandboxBlocks = ( scene, blocks ) => {
     for ( let i=0; i<blocks.length; i++ ) {
         let blockData = blocks[i]
@@ -251,6 +313,15 @@ const drawSandboxProps = ( scene, props ) => {
         } else {
             addProp[prop.id]( scene, prop )
         }
+    }
+}
+
+const drawSandboxEnemies = ( scene, enemies ) => {
+    for ( let i=0; i < enemies.length; i++ ) {
+        let enemy = enemies[i]
+
+        Log_Main.Info(`Found enemy with type ${enemy.id}`)
+        addEnemy( scene, enemy )
     }
 }
 
@@ -285,6 +356,7 @@ const reloadScene = ( scene ) => {
 
     drawSandboxBlocks(scene, Sandbox.getBlocks())
     drawSandboxProps(scene, Sandbox.getProps())
+    drawSandboxEnemies(scene, Sandbox.getEnemies())
 }
 
 const addLights = ( scene ) => {
@@ -581,7 +653,7 @@ const updateSelectedState = ( obj, state ) => {
 const updateEditingObjectMaterial = (obj) => {
     if ( !obj ) return
 
-    let emissiveColor = 0x000000
+    let emissiveColor = obj.userData.material.emissive || 0x000000
 
     if ( obj.userData.hoverState ) emissiveColor = 0xdddddd
     if ( obj.userData.selectedState ) emissiveColor = 0xff00ff
@@ -1252,7 +1324,13 @@ const loader = new OBJLoader( manager )
 
 const modelsToLoad = [
     'assets/models/barrier.obj',
-    'assets/models/tree.obj'
+    'assets/models/tree.obj',
+    'assets/models/maurice.obj',
+    'assets/models/spawn-point.obj',
+    'assets/models/checkpoint.obj',
+    'assets/models/grapple-point.obj',
+    'assets/models/grapple-point-blue.obj',
+    'assets/models/enemy.obj'
 ]
 const objectGeometry = {}
 
